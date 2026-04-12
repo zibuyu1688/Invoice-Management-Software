@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block header_title %}销售方管理{% endblock %}
+
+{% block page_actions %}<a class="button-link primary-link" href="/invoices/new">去录入发票</a>{% endblock %}
+{% block content %}
+<section class="panel">
+  <div class="panel-header">
+    <div>
+      <h3>新增销售方（开票公司）</h3>
+    </div>
+  </div>
+  <form method="post" action="/sellers" class="form-grid">
+    <input name="name" placeholder="公司名称" required>
+    <input name="tax_id" placeholder="纳税人识别号（选填）">
+    <input name="address_phone" placeholder="地址电话">
+    <input name="bank_account" placeholder="开户行及账号">
+    <button type="submit">保存</button>
+  </form>
+</section>
+
+<section class="panel">
+  <div class="panel-header">
+    <div>
+      <h3>销售方列表</h3>
+    </div>
+  </div>
+  <table>
+    <thead><tr><th>ID</th><th>名称</th><th>税号</th><th>地址电话</th><th>开户行账号</th><th>操作</th></tr></thead>
+    <tbody>
+      {% for s in sellers %}
+      <tr>
+        <td>{{ s.id }}</td>
+        <td>{{ s.name }}</td>
+        <td>{{ s.tax_id or '' }}</td>
+        <td>{{ s.address_phone or '' }}</td>
+        <td>{{ s.bank_account or '' }}</td>
+        <td>
+          <a class="small-btn" href="/sellers/{{ s.id }}/edit">编辑</a>
+          <form method="post" action="/sellers/{{ s.id }}/delete" class="inline-form" onsubmit="return confirm('确认删除该销售方?');">
+            <button type="submit" class="small-btn danger">删除</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endblock %}

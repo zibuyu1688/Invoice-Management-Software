@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block page_title %}蜀丞票管{% endblock %}</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand-card">
+        <div class="brand-mark">IF</div>
+        <div>
+          <p class="brand-kicker">Shucheng Invoice</p>
+          <h1>蜀丞票管</h1>
+        </div>
+      </div>
+
+      <nav class="sidebar-nav">
+        <a href="/" class="nav-item {% if request.url.path == '/' %}active{% endif %}">
+          <span class="nav-icon">◌</span>
+          <span>首页</span>
+        </a>
+        <a href="/sellers" class="nav-item {% if request.url.path.startswith('/sellers') %}active{% endif %}">
+          <span class="nav-icon">▦</span>
+          <span>销售方管理</span>
+        </a>
+        <a href="/buyers" class="nav-item {% if request.url.path.startswith('/buyers') %}active{% endif %}">
+          <span class="nav-icon">◍</span>
+          <span>购买方管理</span>
+        </a>
+        <a href="/products" class="nav-item {% if request.url.path.startswith('/products') %}active{% endif %}">
+          <span class="nav-icon">□</span>
+          <span>商品库</span>
+        </a>
+        <a href="/invoices" class="nav-item {% if request.url.path == '/invoices' %}active{% endif %}">
+          <span class="nav-icon">▤</span>
+          <span>发票查询</span>
+        </a>
+        <a href="/analytics" class="nav-item {% if request.url.path.startswith('/analytics') %}active{% endif %}">
+          <span class="nav-icon">◔</span>
+          <span>数据分析</span>
+        </a>
+        <a href="/invoices/new" class="nav-item {% if request.url.path == '/invoices/new' %}active{% endif %}">
+          <span class="nav-icon">＋</span>
+          <span>录入发票</span>
+        </a>
+        <a href="/settings" class="nav-item {% if request.url.path.startswith('/settings') %}active{% endif %}">
+          <span class="nav-icon">⚙</span>
+          <span>设置</span>
+        </a>
+      </nav>
+
+      <section class="sidebar-developer-card">
+        <p class="brand-kicker">Developer</p>
+        <h3>开发者信息</h3>
+        <p>周蜀成</p>
+        <p>QQ:93329385</p>
+        <p><a class="developer-link" href="https://www.codeready.cn" target="_blank" rel="noopener noreferrer">www.codeready.cn</a></p>
+      </section>
+
+      <div class="sidebar-footnote">
+        <p>本地运行</p>
+        <strong>离线可用 · 数据私有</strong>
+      </div>
+    </aside>
+
+    <main class="main-shell">
+      <header class="page-header">
+        <div>
+          <p class="page-kicker">{% block page_kicker %}Shucheng Invoice Workspace{% endblock %}</p>
+          <h2 class="page-title">{% block header_title %}蜀丞票管{% endblock %}</h2>
+          <p class="page-subtitle">{% block page_subtitle %}面向多主体开票、客户管理与电子附件归档的一体化离线工作台。{% endblock %}</p>
+        </div>
+        <div class="page-actions">{% block page_actions %}{% endblock %}</div>
+      </header>
+
+      <section class="container">
+        {% block content %}{% endblock %}
+      </section>
+    </main>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

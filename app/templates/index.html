@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block header_title %}首页总览{% endblock %}
+{% block page_subtitle %}用更专业的本地化流程管理多主体开票、客户资料与电子发票归档。{% endblock %}
+{% block content %}
+<section class="hero-panel">
+  <div class="hero-copy">
+    <p class="eyebrow">蜀丞票管 | 本地离线发票工作台</p>
+    <h3>一键入账，万票无忧</h3>
+    <p>统一管理销售方、客户、商品、开票进度与电子发票附件，提升台账准确性，减少 Excel 往返整理和文件散落带来的管理成本。</p>
+    <div class="hero-actions">
+      <a class="button-link primary-link" href="/invoices/new">立即录入发票</a>
+      <a class="button-link secondary-link" href="/invoices">查看发票台账</a>
+      <a class="button-link secondary-link" href="/analytics">查看数据分析</a>
+    </div>
+  </div>
+  <div class="hero-badge-grid">
+    <div class="mini-stat">
+      <span>销售主体</span>
+      <strong>{{ seller_count }}</strong>
+    </div>
+    <div class="mini-stat">
+      <span>客户数量</span>
+      <strong>{{ buyer_count }}</strong>
+    </div>
+    <div class="mini-stat accent">
+      <span>发票总数</span>
+      <strong>{{ invoice_count }}</strong>
+    </div>
+    <div class="mini-stat warm">
+      <span>价税合计</span>
+      <strong>{{ total_amount }}</strong>
+    </div>
+  </div>
+</section>
+
+<section class="cards dashboard-cards">
+  <article class="card data-card">
+    <p class="card-label">主体管理</p>
+    <h3>快速切换开票公司</h3>
+    <p>支持多个销售主体并行维护，减少开票信息混淆。</p>
+  </article>
+  <article class="card data-card">
+    <p class="card-label">客户信息库</p>
+    <h3>平台与联系人联动</h3>
+    <p>支持平台、联系人、备注与模糊搜索联想，录入效率更高。</p>
+  </article>
+  <article class="card data-card">
+    <p class="card-label">电子归档</p>
+    <h3>按月份自动收纳</h3>
+    <p>PDF 与 OFD 自动归档到本地目录，台账和文件路径同时保存。</p>
+  </article>
+</section>
+
+<section class="panel spotlight-panel">
+  <div class="panel-header">
+    <div>
+      <p class="section-kicker">本地数据位置</p>
+      <h3>数据完全保存在你的电脑</h3>
+    </div>
+  </div>
+  <div class="info-strip">
+    <div>
+      <span class="info-label">数据库</span>
+      <strong>.invoice_manager/data/invoice.db</strong>
+    </div>
+    <div>
+      <span class="info-label">附件归档</span>
+      <strong>.invoice_manager/files/</strong>
+    </div>
+    <div>
+      <span class="info-label">导出目录</span>
+      <strong>.invoice_manager/exports/</strong>
+    </div>
+  </div>
+</section>
+{% endblock %}

@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block header_title %}编辑商品{% endblock %}
+{% block page_subtitle %}保持商品名称与规格统一，减少发票明细录入时的文本差异。{% endblock %}
+{% block content %}
+<section class="panel">
+  <div class="panel-header">
+    <div>
+      <p class="section-kicker">Update Product</p>
+      <h3>编辑商品</h3>
+    </div>
+  </div>
+  <form method="post" action="/products/{{ product.id }}/edit" class="form-grid">
+    <input name="group_name" value="{{ product.group_name or '' }}" placeholder="商品分组（如耗材/设备/办公用品）">
+    <input name="name" value="{{ product.name }}" placeholder="商品名称" required>
+    <input name="spec_model" value="{{ product.spec_model or '' }}" placeholder="规格型号">
+    <button type="submit">保存修改</button>
+  </form>
+</section>
+{% endblock %}

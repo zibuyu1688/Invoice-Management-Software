@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+{% block header_title %}系统设置{% endblock %}
+{% block page_subtitle %}自定义数据、附件归档和导出目录，支持按需手动调整。{% endblock %}
+{% block content %}
+<section class="panel">
+  <div class="panel-header">
+    <div>
+      <p class="section-kicker">Storage Setting</p>
+      <h3>数据存储位置</h3>
+    </div>
+  </div>
+
+  {% if saved == '1' %}
+  <p><strong>保存成功。</strong>新目录：{{ target_home }}。请重启应用后生效。</p>
+  {% endif %}
+
+  <form method="post" action="/settings/storage" class="form-grid">
+    <label>当前目录
+      <input value="{{ current_app_home }}" readonly>
+    </label>
+
+    <label>新目录
+      <input id="storage-path-input" name="storage_path" placeholder="例如：/Users/yourname/Documents/invoice-data" required>
+    </label>
+
+    <label>选择文件夹
+      <button type="button" id="pick-storage-folder-btn" class="small-btn pick-folder-btn" data-target-input="storage-path-input" data-message-id="storage-picker-message">点击选择文件夹</button>
+    </label>
+
+    <label class="checkbox-row">
+      <input type="checkbox" name="migrate_existing_data" value="1">
+      <span>迁移现有 data/files/exports 到新目录</span>
+    </label>
+
+    <button type="submit">保存设置</button>
+  </form>
+
+  <p id="storage-picker-message" class="muted-tip"></p>
+
+  <p>说明：为了避免运行中数据库连接中断，修改目录后需要重启系统，新的路径才会被正式使用。</p>
+</section>
+
+<section class="panel">
+  <div class="panel-header">
+    <div>
+      <p class="section-kicker">Path Override</p>
+      <h3>附件归档与导出目录</h3>
+    </div>
+  </div>
+
+  {% if paths_saved == '1' %}
+  <p><strong>保存成功。</strong>附件目录：{{ target_files_dir }}；导出目录：{{ target_exports_dir }}。请重启应用后生效。</p>
+  {% endif %}
+
+  <form method="post" action="/settings/path-overrides" class="form-grid">
+    <label>当前附件归档目录
+      <input value="{{ current_files_dir }}" readonly>
+    </label>
+
+    <label>附件归档目录（手动修改）
+      <input id="files-dir-input" name="files_dir" placeholder="例如：/Users/yourname/Documents/invoice-files">
+    </label>
+
+    <label>选择附件目录
+      <button type="button" class="small-btn pick-folder-btn" data-target-input="files-dir-input" data-message-id="paths-picker-message">点击选择文件夹</button>
+    </label>
+
+    <label>当前导出目录
+      <input value="{{ current_exports_dir }}" readonly>
+    </label>
+
+    <label>导出目录（手动修改）
+      <input id="exports-dir-input" name="exports_dir" placeholder="例如：/Users/yourname/Documents/invoice-exports">
+    </label>
+
+    <label>选择导出目录
+      <button type="button" class="small-btn pick-folder-btn" data-target-input="exports-dir-input" data-message-id="paths-picker-message">点击选择文件夹</button>
+    </label>
+
+    <button type="submit">保存附件/导出目录</button>
+  </form>
+
+  <p id="paths-picker-message" class="muted-tip"></p>
+  <p>说明：留空并保存可恢复默认目录（跟随数据存储目录下的 files/exports）。</p>
+</section>
+
+<section class="panel">
+  <div class="panel-header">
+    <div>
+      <p class="section-kicker">AI Setting</p>
+      <h3>DeepSeek API Key</h3>
+    </div>
+  </div>
+
+  {% if api_key_saved == '1' %}
+  <p><strong>保存成功。</strong>DeepSeek API Key 已更新。</p>
+  {% endif %}
+
+  <form method="post" action="/settings/deepseek-api-key" class="form-grid">
+    <label>当前状态
+      <input value="{% if has_deepseek_api_key == '1' %}已设置（{{ masked_deepseek_api_key }}）{% else %}未设置{% endif %}" readonly>
+    </label>
+
+    <label>DeepSeek API Key
+      <input type="password" name="deepseek_api_key" placeholder="请输入 sk-...，留空可清除">
+    </label>
+
+    <button type="submit">保存 API Key</button>
+  </form>
+
+  <p>
+    <a class="button-link secondary-link" href="https://platform.deepseek.com/sign_in" target="_blank" rel="noopener noreferrer">前往 DeepSeek 平台购买/登录 API</a>
+  </p>
+
+  <p>说明：该 Key 仅保存在本机 bootstrap 配置文件中，用于“购买方管理”页的 AI 智能解析填充。</p>
+</section>
+
+<p class="page-bottom-note">隐私政策：本系统为本地离线模式，数据、附件归档和导出内容默认仅保存在你的电脑本地，不会自动上传到第三方服务器。</p>
+{% endblock %}

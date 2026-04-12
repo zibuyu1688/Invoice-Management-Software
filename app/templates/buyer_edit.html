@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block header_title %}编辑购买方{% endblock %}
+{% block page_subtitle %}维护账户、税务、银行与联系人信息，提升开票和回款协作效率。{% endblock %}
+{% block content %}
+<section class="panel">
+  <div class="panel-header">
+    <div>
+      <p class="section-kicker">Update Buyer</p>
+      <h3>编辑购买方</h3>
+    </div>
+  </div>
+  <form method="post" action="/buyers/{{ buyer.id }}/edit" class="form-grid">
+    <input name="name" value="{{ buyer.name }}" placeholder="账户名称" required>
+    <input name="tax_id" value="{{ buyer.tax_id or '' }}" placeholder="税号（选填）">
+    <input name="address" value="{{ buyer.address or '' }}" placeholder="地址（选填）">
+    <input name="bank_name" value="{{ buyer.bank_name or '' }}" placeholder="开户银行（选填）">
+    <input name="bank_account_no" value="{{ buyer.bank_account_no or '' }}" placeholder="银行账号（选填）">
+    <input name="contact_person" value="{{ buyer.contact_person or '' }}" placeholder="联系人（选填）">
+    <input name="contact_phone" value="{{ buyer.contact_phone or '' }}" placeholder="联系人手机（选填）">
+    <input name="wechat_qq" value="{{ buyer.wechat_qq or '' }}" placeholder="微信/QQ（选填）">
+    <input name="shipping_address" value="{{ buyer.shipping_address or '' }}" placeholder="收货地址（选填）">
+    <input name="notes" value="{{ buyer.notes or '' }}" placeholder="备注（选填）">
+    <label>平台
+      <select name="platform">
+        <option value="" {% if not buyer.platform %}selected{% endif %}>未分类</option>
+        <option value="1688" {% if buyer.platform == '1688' %}selected{% endif %}>1688</option>
+        <option value="淘宝" {% if buyer.platform == '淘宝' %}selected{% endif %}>淘宝</option>
+        <option value="公对公" {% if buyer.platform == '公对公' %}selected{% endif %}>公对公</option>
+        <option value="微信" {% if buyer.platform == '微信' %}selected{% endif %}>微信</option>
+      </select>
+    </label>
+    <button type="submit">保存修改</button>
+  </form>
+</section>
+{% endblock %}

@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% block header_title %}商品库{% endblock %}
+{% block page_subtitle %}沉淀常用商品名称和规格型号，让每次录单都保持一致且更快。{% endblock %}
+{% block page_actions %}<a class="button-link secondary-link" href="/invoices/new">新建发票</a>{% endblock %}
+{% block content %}
+<section class="panel">
+  <div class="panel-header">
+    <div>
+      <p class="section-kicker">Create Product</p>
+      <h3>新增商品/产品</h3>
+    </div>
+  </div>
+  <form method="post" action="/products" class="form-grid">
+    <input name="group_name" list="product-group-options-create" placeholder="商品分组（如耗材/设备/办公用品）">
+    <datalist id="product-group-options-create">
+      {% for group in group_name_options %}
+      <option value="{{ group }}"></option>
+      {% endfor %}
+    </datalist>
+    <input name="name" list="product-name-options-create" placeholder="商品名称" autocomplete="off" autocapitalize="off" spellcheck="false" required>
+    <datalist id="product-name-options-create">
+      {% for name in product_name_options %}
+      <option value="{{ name }}"></option>
+      {% endfor %}
+    </datalist>
+    <input name="spec_model" placeholder="规格型号">
+    <button type="submit">保存</button>
+  </form>
+</section>
+
+<section class="panel">
+  <div class="panel-header">
+    <div>
+      <p class="section-kicker">Bulk Create</p>
+      <h3>批量添加商品</h3>
+    </div>
+  </div>
+  <form method="post" action="/products/bulk">
+    <label>默认商品分组
+      <input name="group_name" list="product-group-options-bulk" placeholder="批量导入时默认分组，可选">
+      <datalist id="product-group-options-bulk">
+        {% for group in group_name_options %}
+        <option value="{{ group }}"></option>
+        {% endfor %}
+      </datalist>
+    </label>
+    <label>批量内容
+      <textarea name="bulk_text" rows="8" placeholder="每行一条，格式示例：&#10;耗材,pvc热缩袋,10*15&#10;耗材,pvc热缩袋,12*18&#10;设备,封口机&#10;或在上方先指定默认分组后每行写：商品名称,规格"></textarea>
+    </label>
+    <button type="submit">批量保存</button>
+  </form>
+</section>
+
+<section class="panel">
+  <div class="panel-header">
+    <div>
+      <p class="section-kicker">Product Library</p>
+      <h3>商品列表</h3>
+    </div>
+  </div>
+  <form method="get" action="/products" class="form-grid">
+    <label>按商品分组查询
+      <select name="group_name">
+        <option value="">全部分组</option>
+        {% for group in group_name_options %}
+        <option value="{{ group }}" {% if request.query_params.get('group_name') == group %}selected{% endif %}>{{ group }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>按商品名称查询
+      <select name="product_name">
+        <option value="">全部商品</option>
+        {% for name in product_name_options %}
+        <option value="{{ name }}" {% if request.query_params.get('product_name') == name %}selected{% endif %}>{{ name }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <button type="submit">筛选</button>
+  </form>
+  <table>
+    <thead><tr><th>ID</th><th>分组</th><th>名称</th><th>规格</th><th>操作</th></tr></thead>
+    <tbody>
+      {% for p in products %}
+      <tr>
+        <td>{{ p.id }}</td>
+        <td>{{ p.group_name or '' }}</td>
+        <td>{{ p.name }}</td>
+        <td>{{ p.spec_model or '' }}</td>
+        <td>
+          <a class="small-btn" href="/products/{{ p.id }}/edit">编辑</a>
+          <form method="post" action="/products/{{ p.id }}/delete" class="inline-form" onsubmit="return confirm('确认删除该商品?');">
+            <button type="submit" class="small-btn danger">删除</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endblock %}

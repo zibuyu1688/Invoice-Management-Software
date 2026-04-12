@@ -1,0 +1,614 @@
+{% extends "base.html" %}
+{% block header_title %}{% if selected_customer %}单客户分析{% else %}发票数据分析{% endif %}{% endblock %}
+{% block page_subtitle %}{% if selected_customer %}聚焦单个客户的交易规模、复购周期、产品偏好与最近购买情况。{% else %}参考主流 CRM 与财务系统的分析方法，聚焦客户价值、复购周期、产品结构与沉默客户预警。{% endif %}{% endblock %}
+{% block content %}
+<section class="panel">
+  <div class="panel-header">
+    <div>
+      <p class="section-kicker">分析筛选</p>
+      <h3>范围与客户维度</h3>
+    </div>
+  </div>
+  <form method="get" action="/analytics" class="form-grid">
+    <label>
+      展示月份
+      <select name="months">
+        <option value="1" {% if months == 1 %}selected{% endif %}>最近 1 个月</option>
+        <option value="3" {% if months == 3 %}selected{% endif %}>最近 3 个月</option>
+        <option value="6" {% if months == 6 %}selected{% endif %}>最近 6 个月</option>
+        <option value="9" {% if months == 9 %}selected{% endif %}>最近 9 个月</option>
+        <option value="12" {% if months == 12 %}selected{% endif %}>最近 12 个月</option>
+        <option value="18" {% if months == 18 %}selected{% endif %}>最近 18 个月</option>
+        <option value="24" {% if months == 24 %}selected{% endif %}>最近 24 个月</option>
+      </select>
+    </label>
+    <label>
+      单客户分析
+      <select name="buyer_id">
+        <option value="">全部客户</option>
+        {% for b in buyer_options %}
+        <option value="{{ b.id }}" {% if selected_buyer_id == b.id %}selected{% endif %}>{{ b.name }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <button type="submit">更新分析</button>
+    {% if selected_customer %}
+    <a class="button-link secondary-link" href="/analytics/customer-export.xlsx?buyer_id={{ selected_customer.id }}">导出客户画像报表</a>
+    {% endif %}
+  </form>
+</section>
+
+{% if not selected_customer %}
+<section class="cards analytics-kpi-grid">
+  <article class="card kpi-card">
+    <p class="card-label">发票总量</p>
+    <h3>{{ total_count }}</h3>
+    <p>系统累计发票记录数</p>
+  </article>
+  <article class="card kpi-card">
+    <p class="card-label">价税合计</p>
+    <h3>{{ total_amount }}</h3>
+    <p>全部发票金额（含税）</p>
+  </article>
+  <article class="card kpi-card">
+    <p class="card-label">平均票面金额</p>
+    <h3>{{ avg_amount }}</h3>
+    <p>用于识别订单规模变化</p>
+  </article>
+  <article class="card kpi-card">
+    <p class="card-label">本月开票金额</p>
+    <h3>{{ current_month_amount }}</h3>
+    <p>
+      环比上月 {{ mom_change }}%
+      {% if last_month_amount %}（上月：{{ last_month_amount }}）{% endif %}
+    </p>
+  </article>
+</section>
+
+<section class="panel">
+  <div class="panel-header">
+    <div>
+      <p class="section-kicker">趋势分析</p>
+      <h3>最近 {{ months }} 个月开票趋势</h3>
+    </div>
+    <p class="muted-tip">用于判断业务规模的季节性变化</p>
+  </div>
+
+  <div class="trend-bars">
+    {% for row in monthly_trend %}
+    <div class="trend-row">
+      <div class="trend-meta">
+        <strong>{{ row.month }}</strong>
+        <span>{{ row.count }} 张</span>
+      </div>
+      <progress class="bar-progress trend-progress" value="{{ row.amount_ratio }}" max="100"></progress>
+      <div class="trend-value">{{ row.amount }}</div>
+    </div>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="cards analytics-split-grid">
+  <article class="card">
+    <p class="section-kicker">状态结构</p>
+    <h3>发票状态分布</h3>
+    <div class="stack-list">
+      {% for row in status_items %}
+      <div class="stack-item">
+        <div class="stack-line">
+          <strong>{{ row.name }}</strong>
+          <span>{{ row.count }} 张 · {{ row.count_ratio }}%</span>
+        </div>
+        <progress class="bar-progress stack-progress" value="{{ row.count_ratio }}" max="100"></progress>
+        <p>金额：{{ row.amount }}</p>
+      </div>
+      {% endfor %}
+    </div>
+  </article>
+
+  <article class="card">
+    <p class="section-kicker">类型结构</p>
+    <h3>发票类型分布</h3>
+    <div class="stack-list">
+      {% for row in type_items %}
+      <div class="stack-item">
+        <div class="stack-line">
+          <strong>{{ row.name }}</strong>
+          <span>{{ row.count }} 张 · {{ row.count_ratio }}%</span>
+        </div>
+        <progress class="bar-progress stack-progress type" value="{{ row.count_ratio }}" max="100"></progress>
+        <p>金额：{{ row.amount }}</p>
+      </div>
+      {% endfor %}
+    </div>
+  </article>
+</section>
+
+<section class="cards analytics-split-grid">
+  <article class="card">
+    <p class="section-kicker">客户贡献</p>
+    <h3>客户开票金额 TOP 10</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>客户</th>
+          <th>金额</th>
+          <th>占比</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in top_buyers %}
+        <tr>
+          <td>{{ row.name }}</td>
+          <td>{{ row.amount }}</td>
+          <td>{{ row.ratio }}%</td>
+        </tr>
+        {% endfor %}
+        {% if not top_buyers %}
+        <tr>
+          <td colspan="3">暂无数据</td>
+        </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </article>
+
+  <article class="card">
+    <p class="section-kicker">平台贡献</p>
+    <h3>平台开票金额 TOP 5</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>平台</th>
+          <th>金额</th>
+          <th>占比</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in top_platforms %}
+        <tr>
+          <td>{{ row.name }}</td>
+          <td>{{ row.amount }}</td>
+          <td>{{ row.ratio }}%</td>
+        </tr>
+        {% endfor %}
+        {% if not top_platforms %}
+        <tr>
+          <td colspan="3">暂无数据</td>
+        </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </article>
+</section>
+
+<section class="cards analytics-split-grid">
+  <article class="card">
+    <p class="section-kicker">客户生命周期</p>
+    <h3>客户分层（参考 CRM 活跃度模型）</h3>
+    <div class="cards segment-mini-grid">
+      <div class="mini-stat">
+        <span>活跃客户（30天内）</span>
+        <strong>{{ customer_segment.active }}</strong>
+      </div>
+      <div class="mini-stat accent">
+        <span>风险客户（31-90天）</span>
+        <strong>{{ customer_segment.risk }}</strong>
+      </div>
+      <div class="mini-stat warm">
+        <span>沉默客户（90天以上）</span>
+        <strong>{{ customer_segment.dormant }}</strong>
+      </div>
+      <div class="mini-stat">
+        <span>未购买客户</span>
+        <strong>{{ customer_segment.new }}</strong>
+      </div>
+    </div>
+  </article>
+
+  <article class="card">
+    <p class="section-kicker">客户唤醒</p>
+    <h3>长时间未购买客户 TOP 10</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>客户</th>
+          <th>距今天数</th>
+          <th>历史金额</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in dormant_customers %}
+        <tr>
+          <td>{{ row.name }}</td>
+          <td>{{ row.days_since_last }}</td>
+          <td>{{ row.amount }}</td>
+        </tr>
+        {% endfor %}
+        {% if not dormant_customers %}
+        <tr>
+          <td colspan="3">暂无沉默客户</td>
+        </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </article>
+</section>
+
+<section class="cards analytics-split-grid">
+  <article class="card">
+    <p class="section-kicker">产品分析</p>
+    <h3>产品销量与销售额占比 TOP 12</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>产品</th>
+          <th>金额</th>
+          <th>数量</th>
+          <th>金额占比</th>
+          <th>数量占比</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in top_products %}
+        <tr>
+          <td>{{ row.name }}</td>
+          <td>{{ row.amount }}</td>
+          <td>{{ row.quantity }}</td>
+          <td>{{ row.amount_ratio }}%</td>
+          <td>{{ row.quantity_ratio }}%</td>
+        </tr>
+        {% endfor %}
+        {% if not top_products %}
+        <tr>
+          <td colspan="5">暂无数据</td>
+        </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </article>
+
+  <article class="card">
+    <p class="section-kicker">规格分析</p>
+    <h3>规格销量与销售额占比 TOP 12</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>规格</th>
+          <th>金额</th>
+          <th>数量</th>
+          <th>金额占比</th>
+          <th>数量占比</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in top_specs %}
+        <tr>
+          <td>{{ row.name }}</td>
+          <td>{{ row.amount }}</td>
+          <td>{{ row.quantity }}</td>
+          <td>{{ row.amount_ratio }}%</td>
+          <td>{{ row.quantity_ratio }}%</td>
+        </tr>
+        {% endfor %}
+        {% if not top_specs %}
+        <tr>
+          <td colspan="5">暂无数据</td>
+        </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </article>
+</section>
+{% endif %}
+
+{% if selected_customer %}
+<section class="panel">
+  <div class="panel-header">
+    <div>
+      <p class="section-kicker">单客户分析</p>
+      <h3>{{ selected_customer.name }} 的客户画像</h3>
+    </div>
+  </div>
+  <div class="cards analytics-kpi-grid">
+    <article class="card kpi-card">
+      <p class="card-label">累计采购金额</p>
+      <h3>{{ selected_customer.total_amount }}</h3>
+      <p>历史总交易额，反映客户总价值</p>
+    </article>
+    <article class="card kpi-card">
+      <p class="card-label">累计采购数量</p>
+      <h3>{{ selected_customer.total_quantity }}</h3>
+      <p>历史总商品件数/单位数</p>
+    </article>
+    <article class="card kpi-card">
+      <p class="card-label">首次采购时间</p>
+      <h3>{{ selected_customer.first_purchase_date or '暂无' }}</h3>
+      <p>客户生命周期起点</p>
+    </article>
+    <article class="card kpi-card">
+      <p class="card-label">最近一次购买</p>
+      <h3>{% if selected_customer.days_since_last is not none %}{{ selected_customer.days_since_last }} 天前{% else %}暂无{% endif %}</h3>
+      <p>{% if selected_customer.last_purchase_date %}日期：{{ selected_customer.last_purchase_date }}{% else %}该客户暂无发票{% endif %}</p>
+    </article>
+  </div>
+
+  <div class="cards analytics-kpi-grid">
+    <article class="card kpi-card">
+      <p class="card-label">采购频次</p>
+      <h3>{{ selected_customer.total_count }}</h3>
+      <p>历史累计下单次数</p>
+    </article>
+    <article class="card kpi-card">
+      <p class="card-label">平均客单价</p>
+      <h3>{{ selected_customer.avg_amount }}</h3>
+      <p>每次采购平均金额</p>
+    </article>
+    <article class="card kpi-card">
+      <p class="card-label">月/季/年频次</p>
+      <h3>{{ selected_customer.monthly_order_count }}/{{ selected_customer.quarterly_order_count }}/{{ selected_customer.yearly_order_count }}</h3>
+      <p>近 30/90/365 天下单次数</p>
+    </article>
+    <article class="card kpi-card">
+      <p class="card-label">采购周期规律</p>
+      <h3>{{ selected_customer.purchase_cycle_label }}</h3>
+      <p>均单商品数量 {{ selected_customer.avg_items_per_order }}</p>
+    </article>
+  </div>
+
+  <div class="cards analytics-split-grid">
+    <article class="card">
+      <p class="section-kicker">12个月趋势</p>
+      <h3>最近 12 个月月度采购趋势折线图</h3>
+      <div class="line-chart-shell">
+        <svg viewBox="0 0 {{ selected_customer.trend_12m_chart_width }} {{ selected_customer.trend_12m_chart_height }}" class="line-chart-svg" role="img" aria-label="最近12个月月度采购趋势图">
+          <line x1="48" y1="18" x2="48" y2="224" class="chart-axis"></line>
+          <line x1="48" y1="224" x2="742" y2="224" class="chart-axis"></line>
+          <polyline points="{{ selected_customer.trend_12m_polyline }}" class="chart-polyline"></polyline>
+          {% for label in selected_customer.trend_12m_y_axis_labels %}
+          <text x="{{ label.x }}" y="{{ label.y }}" class="chart-label chart-label-y">{{ label.text }}</text>
+          {% endfor %}
+          {% for label in selected_customer.trend_12m_labels %}
+          <text x="{{ label.x }}" y="{{ label.y }}" text-anchor="middle" class="chart-label">{{ label.text }}</text>
+          {% endfor %}
+          {% for dot in selected_customer.trend_12m_dots %}
+          <circle cx="{{ dot.cx }}" cy="{{ dot.cy }}" r="4" class="chart-dot"></circle>
+          {% endfor %}
+        </svg>
+      </div>
+    </article>
+
+    <article class="card">
+      <p class="section-kicker">复购周期</p>
+      <h3>购买间隔分析</h3>
+      <p>平均间隔：{{ selected_customer.avg_interval if selected_customer.avg_interval is not none else '暂无' }} 天</p>
+      <p>最长间隔：{{ selected_customer.max_interval if selected_customer.max_interval is not none else '暂无' }} 天</p>
+      <div class="trend-bars">
+        {% for row in selected_customer.monthly_trend %}
+        <div class="trend-row">
+          <div class="trend-meta">
+            <strong>{{ row.month }}</strong>
+          </div>
+          <progress class="bar-progress trend-progress" value="{{ row.ratio }}" max="100"></progress>
+          <div class="trend-value">{{ row.amount }}</div>
+        </div>
+        {% endfor %}
+      </div>
+    </article>
+
+    <article class="card">
+      <p class="section-kicker">偏好结构</p>
+      <h3>产品/规格偏好（金额占比）</h3>
+      <div class="stack-list">
+        {% for row in selected_customer.product_mix[:5] %}
+        <div class="stack-item">
+          <div class="stack-line">
+            <strong>{{ row.name }}</strong>
+            <span>{{ row.amount_ratio }}%</span>
+          </div>
+          <progress class="bar-progress stack-progress" value="{{ row.amount_ratio }}" max="100"></progress>
+        </div>
+        {% endfor %}
+        {% for row in selected_customer.spec_mix[:5] %}
+        <div class="stack-item">
+          <div class="stack-line">
+            <strong>规格：{{ row.name }}</strong>
+            <span>{{ row.amount_ratio }}%</span>
+          </div>
+          <progress class="bar-progress stack-progress type" value="{{ row.amount_ratio }}" max="100"></progress>
+        </div>
+        {% endfor %}
+      </div>
+    </article>
+  </div>
+
+  <div class="cards analytics-split-grid">
+    <article class="card">
+      <p class="section-kicker">最近采购</p>
+      <h3>最近购买明细列表</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>日期</th>
+            <th>发票号</th>
+            <th>商品摘要</th>
+            <th>数量</th>
+            <th>金额</th>
+            <th>状态</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in selected_customer.recent_purchase_details %}
+          <tr>
+            <td>{{ row.invoice_date }}</td>
+            <td>{{ row.invoice_number }}</td>
+            <td>{{ row.product_summary }}</td>
+            <td>{{ row.quantity }}</td>
+            <td>{{ row.amount }}</td>
+            <td>{{ row.status }}</td>
+          </tr>
+          {% endfor %}
+          {% if not selected_customer.recent_purchase_details %}
+          <tr>
+            <td colspan="6">暂无购买明细</td>
+          </tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </article>
+
+    <article class="card">
+      <p class="section-kicker">商品维度</p>
+      <h3>最常买商品 TOP 5</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>商品</th>
+            <th>累计金额</th>
+            <th>累计数量</th>
+            <th>购买频次</th>
+            <th>金额占比</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in selected_customer.top_products %}
+          <tr>
+            <td>{{ row.name }}</td>
+            <td>{{ row.amount }}</td>
+            <td>{{ row.quantity }}</td>
+            <td>{{ row.frequency }}</td>
+            <td>{{ row.amount_ratio }}%</td>
+          </tr>
+          {% endfor %}
+          {% if not selected_customer.top_products %}
+          <tr>
+            <td colspan="5">暂无商品数据</td>
+          </tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </article>
+  </div>
+
+  <div class="cards analytics-split-grid">
+    <article class="card">
+      <p class="section-kicker">品类结构</p>
+      <h3>采购商品品类分布</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>品类</th>
+            <th>金额</th>
+            <th>数量</th>
+            <th>占比</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in selected_customer.category_distribution %}
+          <tr>
+            <td>{{ row.name }}</td>
+            <td>{{ row.amount }}</td>
+            <td>{{ row.quantity }}</td>
+            <td>{{ row.ratio }}%</td>
+          </tr>
+          {% endfor %}
+          {% if not selected_customer.category_distribution %}
+          <tr>
+            <td colspan="4">暂无品类分布</td>
+          </tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </article>
+
+    <article class="card">
+      <p class="section-kicker">偏好变化</p>
+      <h3>近三个月/半年品类结构变化</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>品类</th>
+            <th>近3个月</th>
+            <th>前3个月</th>
+            <th>变化</th>
+            <th>近6个月</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in selected_customer.category_trends %}
+          <tr>
+            <td>{{ row.name }}</td>
+            <td>{{ row.recent_3_ratio }}%</td>
+            <td>{{ row.prev_3_ratio }}%</td>
+            <td>{{ row.change_pp }}pp</td>
+            <td>{{ row.recent_6_ratio }}%</td>
+          </tr>
+          {% endfor %}
+          {% if not selected_customer.category_trends %}
+          <tr>
+            <td colspan="5">暂无偏好变化数据</td>
+          </tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </article>
+  </div>
+
+  <div class="cards analytics-split-grid">
+    <article class="card">
+      <p class="section-kicker">数量结构</p>
+      <h3>单次采购商品数量分布</h3>
+      <div class="stack-list">
+        {% for row in selected_customer.order_quantity_buckets %}
+        <div class="stack-item">
+          <div class="stack-line">
+            <strong>{{ row.bucket }}</strong>
+            <span>{{ row.count }} 次 · {{ row.ratio }}%</span>
+          </div>
+          <progress class="bar-progress stack-progress aging" value="{{ row.ratio }}" max="100"></progress>
+        </div>
+        {% endfor %}
+      </div>
+    </article>
+
+    <article class="card">
+      <p class="section-kicker">品种结构</p>
+      <h3>单次采购商品种类分布</h3>
+      <div class="stack-list">
+        {% for row in selected_customer.order_item_type_buckets %}
+        <div class="stack-item">
+          <div class="stack-line">
+            <strong>{{ row.bucket }}</strong>
+            <span>{{ row.count }} 次 · {{ row.ratio }}%</span>
+          </div>
+          <progress class="bar-progress stack-progress type" value="{{ row.ratio }}" max="100"></progress>
+        </div>
+        {% endfor %}
+      </div>
+    </article>
+  </div>
+</section>
+{% endif %}
+
+{% if not selected_customer %}
+<section class="panel">
+  <div class="panel-header">
+    <div>
+      <p class="section-kicker">账龄监控</p>
+      <h3>待开票账龄分布（共 {{ pending_total }} 张）</h3>
+    </div>
+  </div>
+  <div class="stack-list">
+    {% for row in pending_items %}
+    <div class="stack-item">
+      <div class="stack-line">
+        <strong>{{ row.bucket }}</strong>
+        <span>{{ row.count }} 张 · {{ row.ratio }}%</span>
+      </div>
+      <progress class="bar-progress stack-progress aging" value="{{ row.ratio }}" max="100"></progress>
+    </div>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+{% endblock %}

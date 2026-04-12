@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+{% block header_title %}录入发票{% endblock %}
+{% block page_subtitle %}按主体、客户与商品明细完成发票录入，并将电子附件自动归档到本地。{% endblock %}
+{% block page_actions %}<a class="button-link secondary-link" href="/invoices">返回台账</a>{% endblock %}
+{% block content %}
+<section class="panel">
+  <div class="panel-header">
+    <div>
+      <p class="section-kicker">Create Invoice</p>
+      <h3>录入发票</h3>
+    </div>
+  </div>
+  {% if not sellers or not buyers %}
+    <p>请先录入销售方和购买方，再创建发票。</p>
+  {% endif %}
+  <form method="post" action="/invoices/new" enctype="multipart/form-data" id="invoice-form">
+    <script id="product-name-options" type="application/json">{{ product_name_options | tojson }}</script>
+    <script id="product-spec-map" type="application/json">{{ product_specs_map | tojson }}</script>
+    <div class="form-grid">
+      <label>销售方
+        <select name="seller_id" required>
+          {% for s in sellers %}
+          <option value="{{ s.id }}">{{ s.name }}{% if s.tax_id %} ({{ s.tax_id }}){% endif %}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label>购买方
+        <select id="buyer-select">
+          <option value="">请选择购买方（下拉）</option>
+          {% for b in buyers %}
+          <option value="{{ b.id }}" data-name="{{ b.name }}" data-platform="{{ b.platform or '' }}" data-contact="{{ b.contact_person or '' }}">{{ b.name }}</option>
+          {% endfor %}
+        </select>
+        <input id="buyer-search" list="buyer-options" placeholder="输入名称/平台/联系人搜索" autocomplete="off" required>
+        <datalist id="buyer-options"></datalist>
+        <input type="hidden" name="buyer_id" id="buyer-id-input" required>
+      </label>
+      <label>购买方平台
+        <input id="buyer-platform" placeholder="自动联动" readonly>
+      </label>
+      <label>购买方联系人
+        <input id="buyer-contact" placeholder="自动联动" readonly>
+      </label>
+      <label>发票类型
+        <select name="invoice_type" required>
+          {% for t in invoice_type_options %}
+          <option value="{{ t }}">{{ t }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label>税率
+        <select name="tax_rate" required>
+          {% for rate in invoice_tax_rate_options %}
+          <option value="{{ rate }}" {% if rate == default_tax_rate %}selected{% endif %}>{{ (rate * 100) | int }}%</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label>发票号码（选填）<input name="invoice_number" class="invoice-number-input"></label>
+      <label>开票日期（选填）<input name="invoice_date" type="date"></label>
+      <label>订单号码（选填）<input name="order_number"></label>
+      <label>订单日期（选填）<input name="order_date" type="date"></label>
+      <label>状态
+        <select name="status">
+          {% for s in invoice_status_options %}
+          <option value="{{ s }}" {% if s == '待开' %}selected{% endif %}>{{ s }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label>电子发票文件(PDF/OFD)<input name="invoice_file" class="invoice-file-input" type="file" accept=".pdf,.ofd"></label>
+    </div>
+
+    <div class="panel-header">
+      <div>
+        <p class="section-kicker">Invoice Items</p>
+        <h3>商品明细</h3>
+      </div>
+    </div>
+    <table id="item-table">
+      <thead>
+        <tr>
+          <th>名称</th><th>规格</th><th>单价</th><th>数量</th><th>金额（含税）</th><th></th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>
+            <input name="item_name" class="item-name-input" list="" autocomplete="off" required>
+            <datalist class="item-name-list"></datalist>
+          </td>
+          <td>
+            <input name="item_spec" class="item-spec-input" list="" autocomplete="off">
+            <datalist class="item-spec-list"></datalist>
+          </td>
+          <td><input name="item_unit_price" type="number" step="0.000001" min="0" class="item-unit-price-input" placeholder="选填"></td>
+          <td><input name="item_quantity" type="number" step="1" min="1" value="1" class="auto-clear-default item-quantity-input" data-default-value="1" required></td>
+          <td><input name="item_amount_with_tax" type="number" step="0.01" min="0" value="0" class="auto-clear-default item-amount-input" data-default-value="0" required></td>
+          <td><button type="button" class="small-btn remove-row">删除</button></td>
+        </tr>
+      </tbody>
+    </table>
+    <p>数量按整数录入。若未填写单价，输入数量与金额后会自动补齐单价。税额会根据你选择的税率（1% / 3% / 13%）自动拆分。</p>
+    <button type="button" id="add-item" class="small-btn">+ 添加明细</button>
+
+    <label>备注
+      <textarea name="notes" rows="3"></textarea>
+    </label>
+
+    <p class="muted-tip">隐私说明：本系统为本地离线模式，发票数据、客户信息、附件归档和导出文件默认保存在你的电脑本地，不会自动上传到第三方服务器。</p>
+
+    <button type="submit">保存发票</button>
+  </form>
+</section>
+
+{% endblock %}

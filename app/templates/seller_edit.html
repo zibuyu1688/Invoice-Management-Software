@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block header_title %}编辑销售方{% endblock %}
+{% block page_subtitle %}调整该主体的开票基础信息，后续录单会立即使用最新资料。{% endblock %}
+{% block content %}
+<section class="panel">
+  <div class="panel-header">
+    <div>
+      <p class="section-kicker">Update Seller</p>
+      <h3>编辑销售方</h3>
+    </div>
+  </div>
+  <form method="post" action="/sellers/{{ seller.id }}/edit" class="form-grid">
+    <input name="name" value="{{ seller.name }}" placeholder="公司名称" required>
+    <input name="tax_id" value="{{ seller.tax_id or '' }}" placeholder="纳税人识别号（选填）">
+    <input name="address_phone" value="{{ seller.address_phone or '' }}" placeholder="地址电话">
+    <input name="bank_account" value="{{ seller.bank_account or '' }}" placeholder="开户行及账号">
+    <button type="submit">保存修改</button>
+  </form>
+</section>
+{% endblock %}
