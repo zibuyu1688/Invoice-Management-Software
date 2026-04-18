@@ -140,10 +140,22 @@ def get_exports_dir(app_home: Path | None = None) -> Path:
     return target
 
 
+def get_backups_dir(app_home: Path | None = None) -> Path:
+    env_value = os.getenv("INVOICE_BACKUPS_DIR", "").strip()
+    if env_value:
+        target = Path(env_value).expanduser().resolve()
+    else:
+        base_home = app_home or get_app_home()
+        target = base_home / "backups"
+    target.mkdir(parents=True, exist_ok=True)
+    return target
+
+
 APP_HOME = get_app_home()
 DATA_DIR = APP_HOME / "data"
 FILES_DIR = get_files_dir(APP_HOME)
 EXPORTS_DIR = get_exports_dir(APP_HOME)
+BACKUPS_DIR = get_backups_dir(APP_HOME)
 TEMPLATES_DIR = Path(__file__).parent / "templates"
 STATIC_DIR = Path(__file__).parent / "static"
 DB_PATH = DATA_DIR / "invoice.db"
@@ -151,3 +163,4 @@ DB_PATH = DATA_DIR / "invoice.db"
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 FILES_DIR.mkdir(parents=True, exist_ok=True)
 EXPORTS_DIR.mkdir(parents=True, exist_ok=True)
+BACKUPS_DIR.mkdir(parents=True, exist_ok=True)

@@ -19,6 +19,7 @@ pyinstaller --noconfirm --clean --windowed --name 蜀丞票管 ^
   --icon assets\icons\shucheng.ico ^
   --add-data "app/templates;app/templates" ^
   --add-data "app/static;app/static" ^
+  --collect-submodules webview ^
   launcher.py
 
 powershell -NoProfile -ExecutionPolicy Bypass -Command "$bad = Get-ChildItem -Path 'dist\蜀丞票管' -Recurse -File | Where-Object { $_.Name -eq 'invoice.db' -or $_.Name -like 'invoice_export_*.xlsx' -or $_.Extension -in '.ofd','.pdf' }; if ($bad) { Write-Host 'Error: build package contains runtime data files (db/exports/attachments).'; $bad | ForEach-Object { Write-Host $_.FullName }; exit 1 }"

@@ -1,12 +1,17 @@
 # -*- mode: python ; coding: utf-8 -*-
 
+from PyInstaller.utils.hooks import collect_submodules
+
+
+hiddenimports = collect_submodules('webview')
+
 
 a = Analysis(
     ['launcher.py'],
     pathex=[],
     binaries=[],
     datas=[('app/templates', 'app/templates'), ('app/static', 'app/static')],
-    hiddenimports=[],
+    hiddenimports=hiddenimports,
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],

@@ -1,76 +1,197 @@
 {% extends "base.html" %}
-{% block header_title %}首页总览{% endblock %}
-{% block page_subtitle %}用更专业的本地化流程管理多主体开票、客户资料与电子发票归档。{% endblock %}
+{% block header_title %}财务工作台{% endblock %}
+{% block page_kicker %}Finance Command Center{% endblock %}
+{% block page_subtitle %}围绕财务单角色设计的发票管理首页，让你在 3 秒内看清今日任务、风险和优先处理项。{% endblock %}
+{% block page_actions %}
+<form method="get" action="/" class="workbench-header-shell">
+  <label class="company-switcher">公司切换
+    <select name="seller_id" onchange="this.form.submit()">
+      <option value="">全部主体</option>
+      {% for seller in sellers %}
+      <option value="{{ seller.id }}" {% if selected_seller_id == seller.id %}selected{% endif %}>{{ seller.name }}</option>
+      {% endfor %}
+    </select>
+  </label>
+</form>
+{% endblock %}
 {% block content %}
-<section class="hero-panel">
-  <div class="hero-copy">
-    <p class="eyebrow">蜀丞票管 | 本地离线发票工作台</p>
-    <h3>一键入账，万票无忧</h3>
-    <p>统一管理销售方、客户、商品、开票进度与电子发票附件，提升台账准确性，减少 Excel 往返整理和文件散落带来的管理成本。</p>
-    <div class="hero-actions">
-      <a class="button-link primary-link" href="/invoices/new">立即录入发票</a>
-      <a class="button-link secondary-link" href="/invoices">查看发票台账</a>
-      <a class="button-link secondary-link" href="/analytics">查看数据分析</a>
-    </div>
+<section class="finance-home-shell">
+  <div class="finance-kpi-grid">
+    <article class="finance-kpi-card">
+      <span class="finance-kpi-label">今日开票金额</span>
+      <strong>{{ '%.2f'|format(today_amount) }}</strong>
+      <p>按开票日期统计，帮助财务快速确认今日产出。</p>
+    </article>
+    <article class="finance-kpi-card">
+      <span class="finance-kpi-label">本月累计金额</span>
+      <strong>{{ '%.2f'|format(month_amount) }}</strong>
+      <p>聚焦本月开票规模，便于追踪月度节奏。</p>
+    </article>
+    <article class="finance-kpi-card highlight-warning">
+      <span class="finance-kpi-label">待开票数量</span>
+      <strong>{{ pending_count }}</strong>
+      <p>需要优先处理的待开票单据，直接影响回款节奏。</p>
+    </article>
+    <article class="finance-kpi-card highlight-danger">
+      <span class="finance-kpi-label">异常发票</span>
+      <strong>{{ abnormal_count }}</strong>
+      <p>票面信息冲突或状态异常，建议尽快核查。</p>
+    </article>
   </div>
-  <div class="hero-badge-grid">
-    <div class="mini-stat">
-      <span>销售主体</span>
-      <strong>{{ seller_count }}</strong>
-    </div>
-    <div class="mini-stat">
-      <span>客户数量</span>
-      <strong>{{ buyer_count }}</strong>
-    </div>
-    <div class="mini-stat accent">
-      <span>发票总数</span>
-      <strong>{{ invoice_count }}</strong>
-    </div>
-    <div class="mini-stat warm">
-      <span>价税合计</span>
-      <strong>{{ total_amount }}</strong>
-    </div>
-  </div>
-</section>
 
-<section class="cards dashboard-cards">
-  <article class="card data-card">
-    <p class="card-label">主体管理</p>
-    <h3>快速切换开票公司</h3>
-    <p>支持多个销售主体并行维护，减少开票信息混淆。</p>
-  </article>
-  <article class="card data-card">
-    <p class="card-label">客户信息库</p>
-    <h3>平台与联系人联动</h3>
-    <p>支持平台、联系人、备注与模糊搜索联想，录入效率更高。</p>
-  </article>
-  <article class="card data-card">
-    <p class="card-label">电子归档</p>
-    <h3>按月份自动收纳</h3>
-    <p>PDF 与 OFD 自动归档到本地目录，台账和文件路径同时保存。</p>
-  </article>
-</section>
+  <div class="finance-home-grid">
+    <section class="panel finance-panel finance-panel-span-8">
+      <div class="panel-header finance-panel-header">
+        <div>
+          <p class="section-kicker">Todo Hub</p>
+          <h3>待处理事项</h3>
+        </div>
+        <p class="muted-tip">点击卡片即可进入对应工作流，首页打开后先处理这里。</p>
+      </div>
+      <div class="finance-task-grid">
+        {% for task in task_cards %}
+        <a class="finance-task-card {{ task.tone }}" href="{{ task.href }}">
+          <div class="finance-task-meta">
+            <span>{{ task.title }}</span>
+            <strong>{{ task.count }}</strong>
+          </div>
+          <p>{{ task.description }}</p>
+          <span class="finance-task-link">立即处理</span>
+        </a>
+        {% endfor %}
+      </div>
+    </section>
 
-<section class="panel spotlight-panel">
-  <div class="panel-header">
-    <div>
-      <p class="section-kicker">本地数据位置</p>
-      <h3>数据完全保存在你的电脑</h3>
-    </div>
-  </div>
-  <div class="info-strip">
-    <div>
-      <span class="info-label">数据库</span>
-      <strong>.invoice_manager/data/invoice.db</strong>
-    </div>
-    <div>
-      <span class="info-label">附件归档</span>
-      <strong>.invoice_manager/files/</strong>
-    </div>
-    <div>
-      <span class="info-label">导出目录</span>
-      <strong>.invoice_manager/exports/</strong>
-    </div>
+    <section class="panel finance-panel finance-panel-span-4">
+      <div class="panel-header finance-panel-header">
+        <div>
+          <p class="section-kicker">Quick Action</p>
+          <h3>快捷操作</h3>
+        </div>
+      </div>
+      <div class="finance-quick-grid">
+        {% for action in quick_actions %}
+        <a class="finance-quick-card {{ action.tone }}" href="{{ action.href }}">
+          <strong>{{ action.title }}</strong>
+          <span>{{ action.subtitle }}</span>
+        </a>
+        {% endfor %}
+      </div>
+      <div class="finance-inline-stats">
+        <div>
+          <span>销售主体</span>
+          <strong>{{ seller_count }}</strong>
+        </div>
+        <div>
+          <span>客户数量</span>
+          <strong>{{ buyer_count }}</strong>
+        </div>
+        <div>
+          <span>发票总数</span>
+          <strong>{{ invoice_count }}</strong>
+        </div>
+        <div>
+          <span>累计金额</span>
+          <strong>{{ '%.2f'|format(total_amount) }}</strong>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel finance-panel finance-panel-span-7">
+      <div class="panel-header finance-panel-header">
+        <div>
+          <p class="section-kicker">Trend</p>
+          <h3>最近 7 天开票金额</h3>
+        </div>
+        <a class="small-btn" href="/analytics">查看分析</a>
+      </div>
+      <div class="finance-trend-panel">
+        <svg viewBox="0 0 620 220" class="finance-trend-chart" role="img" aria-label="最近7天开票金额趋势图">
+          <defs>
+            <linearGradient id="financeTrendArea" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="rgba(22, 119, 255, 0.28)"></stop>
+              <stop offset="100%" stop-color="rgba(22, 119, 255, 0.02)"></stop>
+            </linearGradient>
+            <linearGradient id="financeTrendLine" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0%" stop-color="#6bb6ff"></stop>
+              <stop offset="100%" stop-color="#1677ff"></stop>
+            </linearGradient>
+          </defs>
+          <path d="M {{ trend_area }}" fill="url(#financeTrendArea)"></path>
+          <polyline points="{{ trend_points }}" fill="none" stroke="url(#financeTrendLine)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"></polyline>
+          {% for point in trend_chart_points %}
+          <circle cx="{{ point.x }}" cy="{{ point.y }}" r="5.5" class="finance-trend-dot"></circle>
+          {% endfor %}
+        </svg>
+        <div class="finance-trend-axis">
+          {% for row in trend_rows %}
+          <div>
+            <strong>{{ row.label }}</strong>
+            <span>{{ row.weekday }} · {{ '%.2f'|format(row.amount) }}</span>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </section>
+
+    <section class="panel finance-panel finance-panel-span-5">
+      <div class="panel-header finance-panel-header">
+        <div>
+          <p class="section-kicker">Insight</p>
+          <h3>财务提醒</h3>
+        </div>
+      </div>
+      <div class="finance-alert-stack">
+        <article class="finance-alert-card warning">
+          <strong>待开票优先处理</strong>
+          <p>当前共有 {{ pending_count }} 条待开票单据，建议优先安排今日处理，避免堆积。</p>
+        </article>
+        <article class="finance-alert-card danger">
+          <strong>异常记录需要复核</strong>
+          <p>{{ abnormal_count }} 条发票存在金额或状态异常，建议先修正后再对外流转。</p>
+        </article>
+        <article class="finance-alert-card neutral">
+          <strong>归档完整性</strong>
+          <p>{{ unarchived_count }} 条记录尚未附电子发票原件，影响月底审计和追溯。</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="panel finance-panel finance-panel-span-12">
+      <div class="panel-header finance-panel-header">
+        <div>
+          <p class="section-kicker">Recent Invoice</p>
+          <h3>最近发票列表</h3>
+        </div>
+        <a class="small-btn" href="/invoices">查看全部</a>
+      </div>
+      <div class="finance-recent-table-shell">
+        <table class="finance-recent-table">
+          <thead>
+            <tr>
+              <th>发票号</th>
+              <th>客户</th>
+              <th>销售方</th>
+              <th>金额</th>
+              <th>状态</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for invoice in recent_invoices %}
+            {% set row_status = '异常' if (invoice.amount_with_tax or 0) <= 0 or (invoice.status == '已开' and not invoice.invoice_number) else invoice.status %}
+            {% set row_status_class = 'status-danger' if row_status == '异常' else ('status-opened' if row_status == '已开' else 'status-pending') %}
+            <tr>
+              <td><a class="finance-link-inline" href="/invoices/{{ invoice.id }}/edit">{{ invoice.invoice_number or '待补票号' }}</a></td>
+              <td>{{ invoice.buyer.name if invoice.buyer else '未关联客户' }}</td>
+              <td>{{ invoice.seller.name if invoice.seller else '未关联主体' }}</td>
+              <td>{{ '%.2f'|format(invoice.amount_with_tax or 0) }}</td>
+              <td><span class="status-pill {{ row_status_class }}">{{ row_status }}</span></td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
   </div>
 </section>
 {% endblock %}

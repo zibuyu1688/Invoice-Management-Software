@@ -1,103 +1,324 @@
 {% extends "base.html" %}
 {% block header_title %}购买方管理{% endblock %}
-{% block page_subtitle %}按账户名称、税务信息、银行信息与联系人信息统一维护客户资料。{% endblock %}
-{% block page_actions %}<a class="button-link secondary-link" href="/invoices">查看台账</a>{% endblock %}
+{% block page_subtitle %}客户资料目录与快速检索。{% endblock %}
+{% block page_actions %}
+<button type="button" class="button-link primary-link" data-open-buyer-create>新增购买方</button>
+<a class="button-link secondary-link" href="/invoices">查看台账</a>
+{% endblock %}
 {% block content %}
-<section class="panel">
-  <div class="panel-header">
-    <div>
-      <p class="section-kicker">Quick Filter</p>
-      <h3>顶部搜索与字段筛选</h3>
+<div class="buyer-workspace" data-buyer-workspace>
+  <section class="panel buyer-command-panel">
+    <div class="buyer-command-bar">
+      <div class="buyer-command-copy">
+        <p class="section-kicker">Buyer Directory</p>
+        <div class="buyer-command-heading">
+          <h3>购买方目录</h3>
+          <div class="buyer-command-tags">
+            <span>快速检索</span>
+            <span>目录视图</span>
+            {% if active_filter_count %}<span>筛选 {{ active_filter_count }}</span>{% endif %}
+          </div>
+        </div>
+      </div>
+      <div class="buyer-command-stats">
+        <button type="button" class="buyer-stat-card buyer-stat-filter {% if not profile_status %}is-active{% endif %}" data-profile-filter="">
+          <span>总客户数</span>
+          <strong>{{ total_buyers }}</strong>
+          <p>全部客户档案</p>
+        </button>
+        <article class="buyer-stat-card accent">
+          <span>当前结果</span>
+          <strong>{{ filtered_count }}</strong>
+          <p>当前筛选命中</p>
+        </article>
+        <button type="button" class="buyer-stat-card soft buyer-stat-filter {% if profile_status == 'incomplete' %}is-active{% endif %}" data-profile-filter="incomplete">
+          <span>待完善档案</span>
+          <strong>{{ incomplete_profiles }}</strong>
+          <p>点击集中补录</p>
+        </button>
+      </div>
     </div>
-  </div>
-  <form method="get" action="/buyers" class="form-grid compact-grid compact-actions-grid">
-    <input name="name_keyword" value="{{ name_keyword or '' }}" placeholder="按账户名称快速过滤">
-    <input name="contact_phone_keyword" value="{{ contact_phone_keyword or '' }}" placeholder="按联系人手机快速过滤">
-    <input name="wechat_qq_keyword" value="{{ wechat_qq_keyword or '' }}" placeholder="按微信/QQ快速过滤">
-    <button type="submit">搜索</button>
-    <a class="button-link secondary-link" href="/buyers">清空筛选</a>
-  </form>
-</section>
 
-<section class="panel">
-  <div class="panel-header">
-    <div>
-      <p class="section-kicker">AI Create</p>
-      <h3>AI 增加购买方</h3>
-    </div>
-  </div>
-  <form id="buyer-ai-form" class="form-grid compact-grid buyer-ai-grid">
-    <label>输入原始客户文本
-      <textarea id="buyer-ai-input" rows="4" placeholder="示例：\n四川某某商贸有限公司\n税号：9151...\n开户银行：中国银行成都分行\n银行账号：6222...\n联系人：张三 13800000000\n微信：zhangsan88\n收货地址：成都市高新区...\n平台：1688"></textarea>
-    </label>
-    <button type="button" id="buyer-ai-parse-btn" class="compact-primary-btn">AI 增加</button>
-  </form>
-  <p id="buyer-ai-message" class="muted-tip"></p>
-</section>
+    <form id="buyer-filter-form" method="get" action="/buyers" class="buyer-filter-bar">
+      <input type="hidden" name="profile_status" value="{{ profile_status or '' }}" data-profile-status-input>
 
-<section class="panel">
-  <div class="panel-header">
-    <div>
-      <p class="section-kicker">Create Buyer</p>
-      <h3>新增购买方（客户）</h3>
-    </div>
-  </div>
-  {% if error %}<p class="error-tip">{{ error }}</p>{% endif %}
-  <form method="post" action="/buyers" class="form-grid compact-grid">
-    <input id="buyer-name" name="name" placeholder="账户名称" required>
-    <input id="buyer-tax-id" name="tax_id" placeholder="税号（选填）">
-    <input id="buyer-address" name="address" placeholder="地址（选填）">
-    <input id="buyer-bank-name" name="bank_name" placeholder="开户银行（选填）">
-    <input id="buyer-bank-account-no" name="bank_account_no" placeholder="银行账号（选填）">
-    <input id="buyer-contact-person" name="contact_person" placeholder="联系人（选填）">
-    <input id="buyer-contact-phone" name="contact_phone" placeholder="联系人手机（选填）">
-    <input id="buyer-wechat-qq" name="wechat_qq" placeholder="微信/QQ（选填）">
-    <input id="buyer-shipping-address" name="shipping_address" placeholder="收货地址（选填）">
-    <input id="buyer-notes" name="notes" placeholder="备注（选填）">
-    <label>平台
-      <select id="buyer-platform" name="platform">
-        <option value="">未分类</option>
-        <option value="1688">1688</option>
-        <option value="淘宝">淘宝</option>
-        <option value="公对公">公对公</option>
-        <option value="微信">微信</option>
-      </select>
-    </label>
-    <button type="submit">保存</button>
-  </form>
-</section>
+      <label class="buyer-search-field">
+        <span>聚合搜索</span>
+        <div class="buyer-search-control">
+          <input name="q" value="{{ q or '' }}" placeholder="账户名称 / 联系人 / 手机 / 微信号 / QQ号 / 税号 / 平台">
+          <button type="submit" class="buyer-filter-submit">筛选</button>
+          <button type="button" class="button-link secondary-link buyer-ai-quick-trigger" data-open-buyer-create data-create-focus="ai">
+            <span class="buyer-ai-quick-icon">AI</span>
+            <span>AI 速录</span>
+          </button>
+        </div>
+      </label>
 
-<section class="panel">
-  <div class="panel-header">
-    <div>
-      <p class="section-kicker">Buyer Directory</p>
-      <h3>购买方列表</h3>
+      <label>
+        <span>平台</span>
+        <select name="platform" data-live-submit>
+          <option value="">全部平台</option>
+          {% for option in platform_options %}
+          <option value="{{ option }}" {% if platform == option %}selected{% endif %}>{{ option }}</option>
+          {% endfor %}
+        </select>
+      </label>
+
+      <a class="button-link secondary-link buyer-filter-reset" href="/buyers">重置</a>
+    </form>
+
+    <div class="buyer-filter-feedback">
+      <span>已显示 {{ filtered_count }} / {{ total_buyers }} 位客户</span>
+      {% if active_filter_count %}<span>已启用 {{ active_filter_count }} 个筛选</span>{% endif %}
     </div>
-  </div>
-  <table>
-    <thead><tr><th>账户名称</th><th>税号</th><th>地址</th><th>开户银行</th><th>银行账号</th><th>联系人</th><th>联系人手机</th><th>微信/QQ</th><th>收货地址</th><th>备注</th><th>操作</th></tr></thead>
-    <tbody>
-      {% for b in buyers %}
-      <tr>
-        <td>{{ b.name }}</td>
-        <td>{{ b.tax_id or '' }}</td>
-        <td>{{ b.address or '' }}</td>
-        <td>{{ b.bank_name or '' }}</td>
-        <td>{{ b.bank_account_no or '' }}</td>
-        <td>{{ b.contact_person or '' }}</td>
-        <td>{{ b.contact_phone or '' }}</td>
-        <td>{{ b.wechat_qq or '' }}</td>
-        <td>{{ b.shipping_address or '' }}</td>
-        <td>{{ b.notes or '' }}</td>
-        <td>
-          <a class="small-btn" href="/buyers/{{ b.id }}/edit">编辑</a>
-          <form method="post" action="/buyers/{{ b.id }}/delete" class="inline-form" onsubmit="return confirm('确认删除该购买方?');">
-            <button type="submit" class="small-btn danger">删除</button>
+  </section>
+
+  <section class="panel buyer-directory-panel">
+    <div class="panel-header buyer-directory-header">
+      <div>
+        <p class="section-kicker">Buyer Directory</p>
+        <h3>购买方列表</h3>
+      </div>
+      <div class="buyer-directory-meta">
+        <span class="buyer-summary-pill">共 {{ filtered_count }} 条</span>
+        {% if active_filter_count %}<span class="buyer-filter-pill">已启用 {{ active_filter_count }} 个筛选</span>{% endif %}
+        <button type="button" class="button-link secondary-link" data-open-buyer-create>新增购买方</button>
+      </div>
+    </div>
+
+    {% if buyers %}
+    <div class="buyer-table-shell">
+      <table class="buyer-directory-table">
+        <thead>
+          <tr>
+            <th class="buyer-col-name">账户名称</th>
+            <th class="buyer-col-tax">税号</th>
+            <th class="buyer-col-contact">联系人</th>
+            <th class="buyer-col-phone">联系电话</th>
+            <th class="buyer-col-bank">开户行名称</th>
+            <th class="buyer-col-account">银行账号</th>
+            <th class="buyer-col-shipping">收货地址</th>
+            <th class="buyer-col-platform">平台</th>
+            <th class="buyer-col-actions">操作</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for b in buyers %}
+          <tr class="buyer-directory-row {% if not b.bank_name or not b.bank_account_no or not b.tax_id or not b.contact_phone or not b.address %}needs-attention{% endif %}">
+            <td class="buyer-col-name">
+              <div class="buyer-name-cell">
+                <strong>{{ b.name }}</strong>
+                <p>{{ b.address or b.shipping_address or '未维护地址信息' }}</p>
+              </div>
+            </td>
+            <td class="buyer-col-tax"><span class="buyer-data-mono buyer-nowrap-cell" title="{{ b.tax_id or '未维护' }}">{{ b.tax_id or '未维护' }}</span></td>
+            <td class="buyer-col-contact">{{ b.contact_person or '未维护' }}</td>
+            <td class="buyer-col-phone"><span class="buyer-nowrap-cell" title="{{ b.contact_phone or '未维护' }}">{{ b.contact_phone or '未维护' }}</span></td>
+            <td class="buyer-col-bank"><span class="buyer-compact-cell" title="{{ b.bank_name or '未维护' }}">{{ b.bank_name or '未维护' }}</span></td>
+            <td class="buyer-col-account"><span class="buyer-data-mono buyer-nowrap-cell" title="{{ b.bank_account_no or '未维护' }}">{{ b.bank_account_no or '未维护' }}</span></td>
+            <td class="buyer-col-shipping"><span class="buyer-compact-cell" title="{{ b.shipping_address or '未维护' }}">{{ b.shipping_address or '未维护' }}</span></td>
+            <td class="buyer-col-platform"><span class="buyer-platform-pill">{{ b.platform or '未分类' }}</span></td>
+            <td class="buyer-col-actions">
+              <div class="table-action-row buyer-row-actions">
+                <button
+                  type="button"
+                  class="small-btn icon-action-btn buyer-detail-trigger"
+                  data-buyer-id="{{ b.id }}"
+                  data-name="{{ b.name }}"
+                  data-tax-id="{{ b.tax_id or '未维护' }}"
+                  data-platform="{{ b.platform or '未分类' }}"
+                  data-contact-person="{{ b.contact_person or '未维护' }}"
+                  data-contact-phone="{{ b.contact_phone or '未维护' }}"
+                  data-wechat-qq="{{ b.wechat_qq or '未维护' }}"
+                  data-address="{{ b.address or '未维护' }}"
+                  data-shipping-address="{{ b.shipping_address or '未维护' }}"
+                  data-bank-name="{{ b.bank_name or '未维护' }}"
+                  data-bank-account-no="{{ b.bank_account_no or '未维护' }}"
+                  data-notes="{{ b.notes or '未填写备注' }}"
+                  aria-label="查看购买方详情"
+                  title="查看详情"
+                >◔</button>
+                <a class="small-btn icon-action-btn" href="/buyers/{{ b.id }}/edit" aria-label="编辑购买方" title="编辑购买方">✎</a>
+                <details class="row-action-menu">
+                  <summary class="small-btn icon-action-btn" aria-label="更多操作" title="更多操作">⋯</summary>
+                  <div class="row-action-menu-sheet">
+                    <form method="post" action="/buyers/{{ b.id }}/delete" class="inline-form" onsubmit="return confirm('确认删除该购买方?');">
+                      <button type="submit" class="row-action-danger">删除购买方</button>
+                    </form>
+                  </div>
+                </details>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="buyer-empty-state">
+      <div>
+        <p class="section-kicker">Empty Directory</p>
+        <h3>{% if active_filter_count %}未搜到相关购买方{% else %}还没有可展示的购买方{% endif %}</h3>
+        <p>{% if active_filter_count %}换一个关键词，或清除当前筛选后再查看完整客户目录。{% else %}可以先新增首个客户，或者直接粘贴客户资料让 AI 帮你拆解字段。{% endif %}</p>
+      </div>
+      <div class="buyer-empty-actions">
+        <button type="button" class="button-link primary-link" data-open-buyer-create>新增购买方</button>
+        <a class="button-link secondary-link" href="/buyers">清空筛选</a>
+      </div>
+    </div>
+    {% endif %}
+  </section>
+
+  <div id="buyer-create-drawer" class="modal detail-drawer {% if not error %}hidden{% endif %}">
+    <div class="detail-drawer-card buyer-create-drawer-card">
+      <div class="detail-drawer-header modal-header buyer-drawer-header">
+        <div>
+          <p class="section-kicker">Create Buyer</p>
+          <h3>新增购买方</h3>
+          <p class="detail-drawer-meta">直接粘贴客户信息，AI 自动拆解账户、税号、银行和联系人字段。</p>
+        </div>
+        <div class="detail-drawer-toolbar">
+          <button type="button" class="button-link secondary-link" data-close-buyer-modal>关闭</button>
+        </div>
+      </div>
+
+      <div class="buyer-create-drawer-body">
+        <aside class="buyer-create-ai-panel">
+          <div>
+            <p class="section-kicker">AI Intake</p>
+            <h3>直接粘贴客户信息</h3>
+            <p>把聊天记录、名片文本或原始资料贴进来，系统会先完成字段拆解，再回填右侧表单。</p>
+          </div>
+          <form id="buyer-ai-form" class="buyer-ai-form">
+            <label>
+              <span>原始客户文本</span>
+              <textarea id="buyer-ai-input" rows="8" placeholder="示例：
+四川某某商贸有限公司
+税号：9151...
+开户银行：中国银行成都分行
+银行账号：6222...
+联系人：张三 13800000000
+微信：zhangsan88
+收货地址：成都市高新区...
+平台：1688"></textarea>
+            </label>
+            <button type="button" id="buyer-ai-parse-btn">AI 提取字段</button>
           </form>
-        </td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-</section>
+          <p id="buyer-ai-message" class="muted-tip"></p>
+          <div class="buyer-ai-tips">
+            <strong>建议输入内容</strong>
+            <p>公司名、税号、开户行、银行账号、联系人、电话、微信、QQ、阿里旺旺和收货地址越完整，AI 回填越稳定。</p>
+          </div>
+        </aside>
+
+        <section class="buyer-create-form-panel">
+          {% if error %}<p class="error-tip">{{ error }}</p>{% endif %}
+          <form method="post" action="/buyers" class="form-grid buyer-create-form-grid">
+            <label>
+              <span>账户名称 <em class="field-required">必填</em></span>
+              <input id="buyer-name" name="name" value="{{ form_values.name or '' }}" placeholder="请输入账户名称" required>
+            </label>
+            <label>
+              <span>平台</span>
+              <select id="buyer-platform" name="platform">
+                <option value="">未分类</option>
+                {% for option in platform_options %}
+                <option value="{{ option }}" {% if form_values.platform == option %}selected{% endif %}>{{ option }}</option>
+                {% endfor %}
+              </select>
+            </label>
+            <label>
+              <span>税号</span>
+              <input id="buyer-tax-id" name="tax_id" value="{{ form_values.tax_id or '' }}" placeholder="用于开票校验">
+            </label>
+            <label>
+              <span>联系人</span>
+              <input id="buyer-contact-person" name="contact_person" value="{{ form_values.contact_person or '' }}" placeholder="如：张三">
+            </label>
+            <label>
+              <span>联系人手机</span>
+              <input id="buyer-contact-phone" name="contact_phone" value="{{ form_values.contact_phone or '' }}" placeholder="用于回访或核票">
+            </label>
+            <label>
+              <span>微信 / QQ / 阿里旺旺</span>
+              <input id="buyer-wechat-qq" name="wechat_qq" value="{{ form_values.wechat_qq or '' }}" placeholder="便于维护微信、QQ或旺旺账号">
+            </label>
+            <label class="buyer-create-span-2">
+              <span>开户地址</span>
+              <input id="buyer-address" name="address" value="{{ form_values.address or '' }}" placeholder="发票抬头地址或办公地址">
+            </label>
+            <label>
+              <span>开户银行</span>
+              <input id="buyer-bank-name" name="bank_name" value="{{ form_values.bank_name or '' }}" placeholder="如：中国银行成都分行">
+            </label>
+            <label>
+              <span>银行账号</span>
+              <input id="buyer-bank-account-no" name="bank_account_no" value="{{ form_values.bank_account_no or '' }}" placeholder="回款或开票所需">
+            </label>
+            <label class="buyer-create-span-2">
+              <span>收货地址</span>
+              <input id="buyer-shipping-address" name="shipping_address" value="{{ form_values.shipping_address or '' }}" placeholder="物流或售后沟通使用">
+            </label>
+            <label class="buyer-create-span-2">
+              <span>备注</span>
+              <textarea id="buyer-notes" name="notes" rows="4" placeholder="记录特殊要求、账期或合作备注">{{ form_values.notes or '' }}</textarea>
+            </label>
+            <div class="buyer-create-actions">
+              <button type="submit">保存购买方</button>
+            </div>
+          </form>
+        </section>
+      </div>
+    </div>
+  </div>
+
+  <div id="buyer-detail-drawer" class="modal detail-drawer hidden">
+    <div class="detail-drawer-card buyer-detail-drawer-card">
+      <div class="detail-drawer-header modal-header buyer-drawer-header">
+        <div>
+          <p class="section-kicker">Buyer Profile</p>
+          <h3 id="buyer-detail-name">购买方详情</h3>
+          <p class="detail-drawer-meta" id="buyer-detail-meta">查看完整客户档案</p>
+        </div>
+        <div class="detail-drawer-toolbar">
+          <a id="buyer-detail-edit-link" class="button-link secondary-link" href="/buyers">编辑</a>
+          <button type="button" class="button-link secondary-link" data-close-buyer-modal>关闭</button>
+        </div>
+      </div>
+      <div class="buyer-detail-grid">
+        <article class="buyer-detail-card buyer-detail-card-highlight">
+          <span>平台</span>
+          <strong id="buyer-detail-platform">未分类</strong>
+          <p id="buyer-detail-tax-id">税号未维护</p>
+        </article>
+        <article class="buyer-detail-card">
+          <span>联系人</span>
+          <strong id="buyer-detail-contact-person">未维护</strong>
+          <p id="buyer-detail-contact-phone">未维护联系电话</p>
+        </article>
+        <article class="buyer-detail-card buyer-detail-card-span-2">
+          <span>开户地址</span>
+          <strong id="buyer-detail-address">未维护</strong>
+        </article>
+        <article class="buyer-detail-card buyer-detail-card-span-2">
+          <span>收货地址</span>
+          <strong id="buyer-detail-shipping-address">未维护</strong>
+        </article>
+        <article class="buyer-detail-card">
+          <span>微信 / QQ / 阿里旺旺</span>
+          <strong id="buyer-detail-wechat-qq">未维护</strong>
+        </article>
+        <article class="buyer-detail-card buyer-detail-card-span-2">
+          <span>银行信息</span>
+          <strong id="buyer-detail-bank-name">未维护</strong>
+          <p id="buyer-detail-bank-account-no">未维护银行账号</p>
+        </article>
+        <article class="buyer-detail-card buyer-detail-card-span-3">
+          <span>备注</span>
+          <strong id="buyer-detail-notes">未填写备注</strong>
+        </article>
+      </div>
+    </div>
+  </div>
+</div>
 {% endblock %}

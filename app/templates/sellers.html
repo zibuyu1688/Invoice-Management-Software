@@ -1,48 +1,196 @@
 {% extends "base.html" %}
 {% block header_title %}销售方管理{% endblock %}
-
+{% block page_subtitle %}主体财务资料与业务员成员分开管理，便于多主体开票与后续权限扩展。{% endblock %}
 {% block page_actions %}<a class="button-link primary-link" href="/invoices/new">去录入发票</a>{% endblock %}
 {% block content %}
-<section class="panel">
-  <div class="panel-header">
-    <div>
-      <h3>新增销售方（开票公司）</h3>
+<div class="seller-workspace" data-seller-workspace>
+  <section class="panel seller-overview-panel">
+    <div class="seller-overview-header">
+      <div>
+        <p class="section-kicker">Seller Workspace</p>
+        <h3>多主体管理</h3>
+        <p>先创建开票主体，再按公司维度维护业务员成员信息。</p>
+      </div>
+      <div class="seller-overview-stats">
+        <article class="seller-overview-card">
+          <span>当前主体数</span>
+          <strong>{{ seller_count }}</strong>
+        </article>
+        <article class="seller-overview-card accent">
+          <span>活跃业务员</span>
+          <strong>{{ salesperson_count }}</strong>
+        </article>
+      </div>
     </div>
-  </div>
-  <form method="post" action="/sellers" class="form-grid">
-    <input name="name" placeholder="公司名称" required>
-    <input name="tax_id" placeholder="纳税人识别号（选填）">
-    <input name="address_phone" placeholder="地址电话">
-    <input name="bank_account" placeholder="开户行及账号">
-    <button type="submit">保存</button>
-  </form>
-</section>
+  </section>
 
-<section class="panel">
-  <div class="panel-header">
-    <div>
-      <h3>销售方列表</h3>
+  <section class="panel seller-create-panel">
+    <div class="panel-header seller-create-header">
+      <div>
+        <p class="section-kicker">Step 1</p>
+        <h3>新增销售方主体</h3>
+        <p>先保存核心财务资料，业务员信息在列表中通过“成员管理”独立维护。</p>
+      </div>
+    </div>
+    <form method="post" action="/sellers" class="form-grid seller-create-grid">
+      <label class="seller-create-span-2">
+        <span>公司名称 <em class="field-required">*</em></span>
+        <input name="name" placeholder="如：蜀丞包装有限公司" required>
+      </label>
+      <label class="seller-create-span-2">
+        <span>纳税人识别号</span>
+        <input name="tax_id" placeholder="主体税号（选填）">
+      </label>
+      <label class="seller-create-span-2">
+        <span>开户行</span>
+        <input name="bank_name_display" placeholder="如：中国银行成都分行" data-seller-bank-name-display>
+      </label>
+      <label class="seller-create-span-2">
+        <span>账号</span>
+        <input name="bank_account_display" placeholder="银行账号" data-seller-bank-account-display>
+      </label>
+      <label class="seller-create-span-4">
+        <span>地址电话</span>
+        <input name="address_phone" placeholder="开票地址与联系电话">
+      </label>
+      <input type="hidden" name="bank_account" data-seller-bank-account-hidden>
+      <div class="seller-create-actions">
+        <button type="submit">保存主体</button>
+      </div>
+    </form>
+  </section>
+
+  <section class="panel seller-directory-panel">
+    <div class="panel-header seller-directory-header">
+      <div>
+        <p class="section-kicker">Seller Directory</p>
+        <h3>销售方列表</h3>
+      </div>
+    </div>
+
+    {% if seller_cards %}
+    <div class="seller-card-list">
+      {% for card in seller_cards %}
+      <article class="seller-card">
+        <div class="seller-card-main">
+          <div class="seller-card-title-row">
+            <div class="seller-card-title-block">
+              <h4>{{ card.seller.name }}</h4>
+              <p>{{ card.seller.tax_id or '-' }}</p>
+            </div>
+            <div class="seller-card-actions">
+              <button
+                type="button"
+                class="small-btn seller-members-trigger"
+                data-open-seller-members
+                data-seller-id="{{ card.seller.id }}"
+                data-seller-name="{{ card.seller.name }}"
+                data-seller-members='{{ card.members|tojson|safe }}'
+              >成员管理</button>
+              <a class="small-btn" href="/sellers/{{ card.seller.id }}/edit">编辑</a>
+              <form method="post" action="/sellers/{{ card.seller.id }}/delete" class="inline-form" onsubmit="return confirm('确认删除该销售方?');">
+                <button type="submit" class="small-btn danger">删除</button>
+              </form>
+            </div>
+          </div>
+
+          <div class="seller-card-details">
+            <div class="seller-detail-item">
+              <span>开户地址 / 电话</span>
+              <strong>{{ card.seller.address_phone or '-' }}</strong>
+            </div>
+            <div class="seller-detail-item">
+              <span>开户行 / 账号</span>
+              <strong>{{ card.seller.bank_account or '-' }}</strong>
+            </div>
+            <div class="seller-detail-item seller-members-item">
+              <span>业务员成员</span>
+              <div class="seller-member-tags">
+                {% if card.members %}
+                  {% for member in card.members[:3] %}
+                  <span class="seller-member-tag">{{ member.name }}</span>
+                  {% endfor %}
+                  {% if card.member_count > 3 %}
+                  <span class="seller-member-tag muted" tabindex="0" data-hover-card-title="完整成员名单" data-hover-card-body="{{ card.member_names|join('、') }}">+{{ card.member_count - 3 }}</span>
+                  {% endif %}
+                {% else %}
+                  <span class="seller-member-tag muted">-</span>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+        </div>
+      </article>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="seller-empty-state">
+      <div class="buyer-empty-visual">◌</div>
+      <div>
+        <p class="section-kicker">Empty Directory</p>
+        <h3>还没有可管理的销售方主体</h3>
+        <p>先录入开票主体，再进入成员管理面板补充业务员信息。</p>
+      </div>
+    </div>
+    {% endif %}
+  </section>
+
+  <div id="seller-members-drawer" class="modal detail-drawer hidden">
+    <div class="detail-drawer-card seller-members-drawer-card">
+      <div class="detail-drawer-header modal-header seller-members-header">
+        <div>
+          <p class="section-kicker">Member Management</p>
+          <h3 id="seller-members-title">业务员管理</h3>
+          <p class="detail-drawer-meta">为当前销售方维护姓名、电话、微信和所属部门。</p>
+        </div>
+        <div class="detail-drawer-toolbar">
+          <button type="button" class="button-link secondary-link" data-close-seller-members>关闭</button>
+        </div>
+      </div>
+
+      <div class="seller-members-drawer-body">
+        <section class="seller-members-table-panel">
+          <form id="seller-members-form" method="post" action="/sellers" class="seller-members-form">
+            <div class="seller-members-toolbar">
+              <button type="button" class="button-link secondary-link" id="seller-add-member-row">添加成员</button>
+            </div>
+            <div class="detail-drawer-table-shell">
+              <table class="detail-drawer-table seller-members-table">
+                <thead>
+                  <tr>
+                    <th>姓名</th>
+                    <th>电话</th>
+                    <th>微信</th>
+                    <th>部门</th>
+                    <th>操作</th>
+                  </tr>
+                </thead>
+                <tbody id="seller-members-body"></tbody>
+              </table>
+            </div>
+            <div class="seller-members-submit-row">
+              <button type="submit">保存成员</button>
+            </div>
+          </form>
+        </section>
+
+        <aside class="seller-members-ai-panel">
+          <div>
+            <p class="section-kicker">AI Import</p>
+            <h3>AI 成员导入</h3>
+            <p>粘贴包含多个联系人的原始文本，系统会自动拆出姓名、电话、微信和部门。</p>
+          </div>
+          <form class="seller-ai-form" id="seller-ai-form">
+            <label>
+              <span>原始成员文本</span>
+              <textarea id="seller-ai-input" rows="10" placeholder="示例：\n张三 销售一部 13800000000 微信 zhangsan\n李四 电商部 13900000000 微信 lisi88"></textarea>
+            </label>
+            <button type="button" id="seller-ai-parse-btn">AI 识别成员</button>
+          </form>
+          <p id="seller-ai-message" class="muted-tip"></p>
+        </aside>
+      </div>
     </div>
   </div>
-  <table>
-    <thead><tr><th>ID</th><th>名称</th><th>税号</th><th>地址电话</th><th>开户行账号</th><th>操作</th></tr></thead>
-    <tbody>
-      {% for s in sellers %}
-      <tr>
-        <td>{{ s.id }}</td>
-        <td>{{ s.name }}</td>
-        <td>{{ s.tax_id or '' }}</td>
-        <td>{{ s.address_phone or '' }}</td>
-        <td>{{ s.bank_account or '' }}</td>
-        <td>
-          <a class="small-btn" href="/sellers/{{ s.id }}/edit">编辑</a>
-          <form method="post" action="/sellers/{{ s.id }}/delete" class="inline-form" onsubmit="return confirm('确认删除该销售方?');">
-            <button type="submit" class="small-btn danger">删除</button>
-          </form>
-        </td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-</section>
+</div>
 {% endblock %}

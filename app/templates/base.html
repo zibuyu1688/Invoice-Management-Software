@@ -9,11 +9,13 @@
 <body>
   <div class="app-shell">
     <aside class="sidebar">
-      <div class="brand-card">
-        <div class="brand-mark">IF</div>
-        <div>
-          <p class="brand-kicker">Shucheng Invoice</p>
-          <h1>蜀丞票管</h1>
+      <div class="sidebar-topbar">
+        <div class="brand-card">
+          <div class="brand-mark" aria-hidden="true">sc</div>
+          <div class="brand-copy">
+            <h1>蜀丞票管</h1>
+            <p class="brand-subline">SHUCHENG INVOICE</p>
+          </div>
         </div>
       </div>
 
@@ -40,7 +42,7 @@
         </a>
         <a href="/analytics" class="nav-item {% if request.url.path.startswith('/analytics') %}active{% endif %}">
           <span class="nav-icon">◔</span>
-          <span>数据分析</span>
+          <span>数据罗盘</span>
         </a>
         <a href="/invoices/new" class="nav-item {% if request.url.path == '/invoices/new' %}active{% endif %}">
           <span class="nav-icon">＋</span>
@@ -63,6 +65,10 @@
       <div class="sidebar-footnote">
         <p>本地运行</p>
         <strong>离线可用 · 数据私有</strong>
+      </div>
+
+      <div class="sidebar-toggle-wrap">
+        <button type="button" class="sidebar-toggle-btn" id="sidebar-toggle-btn" aria-label="收起导航栏">⇤</button>
       </div>
     </aside>
 

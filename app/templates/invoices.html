@@ -2,158 +2,358 @@
 {% block header_title %}发票查询与管理{% endblock %}
 {% block page_subtitle %}按时间、主体、平台、类型和关键词快速收敛结果，并直接查看台账明细与附件。{% endblock %}
 {% block page_actions %}
-<a class="button-link secondary-link" href="/export.xlsx?{{ request.query_params }}">导出台账</a>
 <a class="button-link primary-link" href="/invoices/new">录入发票</a>
+<a class="button-link secondary-link export-job-trigger" href="/export.zip?{{ export_query }}">导出</a>
 {% endblock %}
 {% block content %}
-<section class="panel">
-  <div class="panel-header">
-    <div>
-      <p class="section-kicker">Invoice Query</p>
-      <h3>发票查询条件</h3>
-    </div>
+{% set filters = current_filters %}
+{% set advanced_open = filters.platform or filters.salesperson or filters.invoice_type %}
+{% set total_count = invoices|length %}
+{% set opened_count = invoices|selectattr('status', 'equalto', '已开')|list|length %}
+{% set pending_count = invoices|selectattr('status', 'equalto', '待开')|list|length %}
+{% set total_amount = invoices|sum(attribute='amount_with_tax') %}
+{% set ns = namespace(attachment_count=0, voucher_count=0) %}
+{% for i in invoices %}
+  {% if i.file_stored_path or i.trade_voucher_stored_path %}
+    {% set ns.attachment_count = ns.attachment_count + 1 %}
+  {% endif %}
+  {% if i.trade_voucher_stored_path or i.trade_voucher_text %}
+    {% set ns.voucher_count = ns.voucher_count + 1 %}
+  {% endif %}
+{% endfor %}
+<section class="panel workbench-panel">
+  <div class="query-overview-strip">
+    <a class="query-overview-link" href="{{ overview_links.total }}">
+      <article class="query-overview-card accent interactive">
+        <span>总发票数</span>
+        <strong>{{ total_count }}</strong>
+        <p>当前筛选结果中的发票总量</p>
+      </article>
+    </a>
+    <a class="query-overview-link" href="{{ overview_links.total }}">
+      <article class="query-overview-card interactive">
+        <span>总金额</span>
+        <strong>{{ '%.2f'|format(total_amount) }}</strong>
+        <p>价税合计，便于快速掌握本期规模</p>
+      </article>
+    </a>
+    <a class="query-overview-link" href="{{ overview_links.opened }}">
+      <article class="query-overview-card interactive">
+        <span>已开票</span>
+        <strong>{{ opened_count }}</strong>
+        <p>已进入开票完成状态的单据</p>
+      </article>
+    </a>
+    <a class="query-overview-link" href="{{ overview_links.pending }}">
+      <article class="query-overview-card interactive">
+        <span>未开票</span>
+        <strong>{{ pending_count }}</strong>
+        <p>仍需处理或待开票的单据</p>
+      </article>
+    </a>
+    <a class="query-overview-link" href="{{ overview_links.voucher }}">
+      <article class="query-overview-card interactive">
+        <span>含凭证</span>
+        <strong>{{ ns.voucher_count }}</strong>
+        <p>带凭证文件或粘贴留痕的记录</p>
+      </article>
+    </a>
   </div>
-  <form method="get" action="/invoices" class="form-grid auto-submit-select-form">
-    <label>快捷区间
-      <select name="recent_range">
-        <option value="" {% if request.query_params.get('recent_range', '') == '' %}selected{% endif %}>不限制</option>
-        <option value="1m" {% if request.query_params.get('recent_range', '') == '1m' %}selected{% endif %}>最近1个月</option>
-        <option value="3m" {% if request.query_params.get('recent_range', '') == '3m' %}selected{% endif %}>最近3个月</option>
-        <option value="6m" {% if request.query_params.get('recent_range', '') == '6m' %}selected{% endif %}>最近6个月</option>
-        <option value="9m" {% if request.query_params.get('recent_range', '') == '9m' %}selected{% endif %}>最近9个月</option>
-        <option value="1y" {% if request.query_params.get('recent_range', '') == '1y' %}selected{% endif %}>最近1年</option>
-        <option value="custom" {% if request.query_params.get('recent_range', '') == 'custom' %}selected{% endif %}>自定义时间</option>
-      </select>
-    </label>
-    <label>开始日期<input type="date" name="start_date" value="{{ request.query_params.get('start_date', '') }}"></label>
-    <label>结束日期<input type="date" name="end_date" value="{{ request.query_params.get('end_date', '') }}"></label>
-    <label>销售方
-      <select name="seller_id">
-        <option value="">全部</option>
-        {% for s in sellers %}
-          <option value="{{ s.id }}" {% if request.query_params.get('seller_id') == (s.id|string) %}selected{% endif %}>{{ s.name }}</option>
-        {% endfor %}
-      </select>
-    </label>
-    <label>购买方
-      <select name="buyer_id" id="buyer-filter-select">
-        <option value="">全部</option>
-        {% for b in buyers %}
-          <option value="{{ b.id }}" {% if request.query_params.get('buyer_id') == (b.id|string) %}selected{% endif %}>{{ b.name }}</option>
-        {% endfor %}
-      </select>
-    </label>
-    <label>购买方联想
-      <input id="buyer-filter-input" list="buyer-filter-options" placeholder="输入购买方名称联想" autocomplete="off">
-      <datalist id="buyer-filter-options">
-        {% for b in buyers %}
-        <option value="{{ b.name }}"></option>
-        {% endfor %}
-      </datalist>
-    </label>
-    <label>平台
-      <select name="platform">
-        <option value="">全部</option>
-        {% for p in platform_options %}
-        <option value="{{ p }}" {% if request.query_params.get('platform') == p %}selected{% endif %}>{{ p }}</option>
-        {% endfor %}
-      </select>
-    </label>
-    <label>发票类型
-      <select name="invoice_type">
-        <option value="">全部</option>
-        {% for t in invoice_type_options %}
-        <option value="{{ t }}" {% if request.query_params.get('invoice_type') == t %}selected{% endif %}>{{ t }}</option>
-        {% endfor %}
-      </select>
-    </label>
-    <label>开票进度
-      <select name="status">
-        <option value="">全部</option>
-        {% for s in invoice_status_options %}
-        <option value="{{ s }}" {% if request.query_params.get('status') == s %}selected{% endif %}>{{ s }}</option>
-        {% endfor %}
-      </select>
-    </label>
-    <label>关键词
-      <input name="keyword" placeholder="发票号/订单号/备注" value="{{ request.query_params.get('keyword', '') }}">
-    </label>
-    <button type="submit">筛选</button>
+
+  <form method="get" action="/invoices" class="query-workbench-form">
+    <section class="query-card query-card-basic">
+      <div class="query-card-header">
+        <div>
+          <p class="section-kicker">Quick Locate</p>
+          <h3>基础筛选</h3>
+        </div>
+        <p class="query-card-tip">先限定时间，再输入发票号、订单号或备注关键词，最快找到目标单据。</p>
+      </div>
+
+      <input type="hidden" name="recent_range" value="{{ filters.recent_range }}">
+
+      <div class="query-quick-range-row">
+        <button type="button" data-recent-range="today" class="filter-chip-button {% if filters.recent_range == 'today' %}active{% endif %}">今天</button>
+        <button type="button" data-recent-range="yesterday" class="filter-chip-button {% if filters.recent_range == 'yesterday' %}active{% endif %}">昨天</button>
+        <button type="button" data-recent-range="7d" class="filter-chip-button {% if filters.recent_range == '7d' %}active{% endif %}">最近7天</button>
+        <button type="button" data-recent-range="month" class="filter-chip-button {% if filters.recent_range == 'month' %}active{% endif %}">本月</button>
+        <button type="button" data-recent-range="1m" class="filter-chip-button {% if filters.recent_range == '1m' %}active{% endif %}">最近1个月</button>
+      </div>
+
+      <div class="query-basic-grid">
+        <label class="query-field query-field-wide">时间范围
+          <div class="query-date-range">
+            <input type="date" name="start_date" value="{{ filters.start_date }}">
+            <span>至</span>
+            <input type="date" name="end_date" value="{{ filters.end_date }}">
+          </div>
+        </label>
+        <label class="query-field">关键字
+          <input name="keyword" placeholder="发票号 / 订单号 / 备注" value="{{ filters.keyword }}">
+        </label>
+        <label class="query-field">开票进度
+          <select name="status">
+            <option value="">全部</option>
+            {% for s in invoice_status_options %}
+            <option value="{{ s }}" {% if filters.status == s %}selected{% endif %}>{{ s }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <div class="query-field query-action-field">
+          <span class="query-field-label">操作</span>
+          <div class="query-primary-actions">
+            <button type="submit" class="query-submit-btn">查询发票</button>
+            <a class="query-secondary-btn" href="/invoices">重置</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="query-card query-card-subject">
+      <div class="query-card-header">
+        <div>
+          <p class="section-kicker">Counterparty</p>
+          <h3>主体筛选</h3>
+        </div>
+        <p class="query-card-tip">优先锁定销售方和购买方，快速缩小结果范围。</p>
+      </div>
+
+      <div class="query-subject-grid">
+        <label class="query-field">销售方
+          <input id="seller-filter-input" list="seller-filter-options" placeholder="输入销售方名称联想" autocomplete="off">
+          <datalist id="seller-filter-options">
+            {% for s in sellers %}
+            <option value="{{ s.name }}"></option>
+            {% endfor %}
+          </datalist>
+          <select name="seller_id" id="seller-filter-select" hidden>
+            <option value="">全部</option>
+            {% for s in sellers %}
+            <option value="{{ s.id }}" {% if filters.seller_id == (s.id|string) %}selected{% endif %}>{{ s.name }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <label class="query-field">购买方
+          <input id="buyer-filter-input" list="buyer-filter-options" placeholder="输入购买方名称联想" autocomplete="off">
+          <datalist id="buyer-filter-options">
+            {% for b in buyers %}
+            <option value="{{ b.name }}"></option>
+            {% endfor %}
+          </datalist>
+          <select name="buyer_id" id="buyer-filter-select" hidden>
+            <option value="">全部</option>
+            {% for b in buyers %}
+            <option value="{{ b.id }}" {% if filters.buyer_id == (b.id|string) %}selected{% endif %}>{{ b.name }}</option>
+            {% endfor %}
+          </select>
+        </label>
+      </div>
+    </section>
+
+    <details class="filter-drawer query-advanced-drawer" id="invoice-filter-drawer" {% if advanced_open %}open{% endif %}>
+      <summary>
+        <div>
+          <p class="section-kicker">Advanced</p>
+          <h3>高级筛选</h3>
+        </div>
+        <span class="filter-drawer-toggle">平台 / 业务员 / 类型</span>
+      </summary>
+
+      <div class="query-advanced-grid">
+        <div class="query-chip-panel">
+          <span class="query-chip-panel-title">平台</span>
+          <div class="query-chip-group">
+            <label class="query-choice-chip {% if not filters.platform %}active{% endif %}"><input type="radio" name="platform" value="" {% if not filters.platform %}checked{% endif %}>全部</label>
+            {% for p in platform_options %}
+            <label class="query-choice-chip {% if filters.platform == p %}active{% endif %}"><input type="radio" name="platform" value="{{ p }}" {% if filters.platform == p %}checked{% endif %}>{{ p }}</label>
+            {% endfor %}
+          </div>
+        </div>
+
+        <label class="query-field">业务员
+          <input id="salesperson-filter-input" list="salesperson-filter-options" placeholder="输入业务员姓名联想" autocomplete="off">
+          <datalist id="salesperson-filter-options">
+            {% for person in salesperson_options %}
+            <option value="{{ person }}"></option>
+            {% endfor %}
+          </datalist>
+          <select name="salesperson" id="salesperson-filter-select" hidden>
+            <option value="">全部</option>
+            {% for person in salesperson_options %}
+            <option value="{{ person }}" {% if filters.salesperson == person %}selected{% endif %}>{{ person }}</option>
+            {% endfor %}
+          </select>
+        </label>
+
+        <div class="query-chip-panel">
+          <span class="query-chip-panel-title">发票类型</span>
+          <div class="query-chip-group">
+            <label class="query-choice-chip {% if not filters.invoice_type %}active{% endif %}"><input type="radio" name="invoice_type" value="" {% if not filters.invoice_type %}checked{% endif %}>全部</label>
+            {% for t in invoice_type_options %}
+            <label class="query-choice-chip {% if filters.invoice_type == t %}active{% endif %}"><input type="radio" name="invoice_type" value="{{ t }}" {% if filters.invoice_type == t %}checked{% endif %}>{{ t }}</label>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+    </details>
   </form>
 
-  <p>
-    <a class="small-btn" href="/export.xlsx?{{ request.query_params }}">导出当前筛选为 Excel</a>
-  </p>
-
-  <table>
-    <thead>
-      <tr>
-        <th>类型</th><th>发票号</th><th>开票日期</th><th>订单号</th><th>订单日期</th><th>销售方</th><th>购买方</th><th>平台</th><th>不含税</th><th>税额</th><th>价税合计</th><th>状态</th><th>文件</th><th>操作</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for i in invoices %}
-      <tr>
-        <td>{{ i.invoice_type }}</td>
-        <td>{{ i.invoice_number }}</td>
-        <td>{{ i.invoice_date }}</td>
-        <td>{{ i.order_number or '' }}</td>
-        <td>{{ i.order_date or '' }}</td>
-        <td>{{ i.seller.name if i.seller else '' }}</td>
-        <td>{{ i.buyer.name if i.buyer else '' }}</td>
-        <td>{{ i.buyer.platform if i.buyer else '' }}</td>
-        <td>{{ i.amount_without_tax }}</td>
-        <td>{{ i.tax_amount }}</td>
-        <td>{{ i.amount_with_tax }}</td>
-        <td>
-          <span class="status-pill {{ 'status-opened' if i.status == '已开' else 'status-pending' }}">{{ i.status }}</span>
-        </td>
-        <td>
-          {% if i.file_stored_path %}
-            <a href="/invoices/{{ i.id }}/file" target="_blank">打开</a>
-          {% else %}
-            -
-          {% endif %}
-        </td>
-        <td>
-          <button type="button" class="small-btn view-items" data-invoice-id="{{ i.id }}">查看明细</button>
-          {% if i.status == '已开' %}
-          <form method="post" action="/invoices/{{ i.id }}/status" class="inline-form">
-            <input type="hidden" name="status" value="待开">
-            <button type="submit" class="small-btn">改为待开</button>
-          </form>
-          {% else %}
-          <form method="post" action="/invoices/{{ i.id }}/status" class="inline-form">
-            <input type="hidden" name="status" value="已开">
-            <button type="submit" class="small-btn">标记已开</button>
-          </form>
-          {% endif %}
-          <a class="small-btn" href="/invoices/{{ i.id }}/edit">编辑</a>
-          <form method="post" action="/invoices/{{ i.id }}/delete" class="inline-form" onsubmit="return confirm('确认删除该发票?');">
-            <button type="submit" class="small-btn danger">删除</button>
-          </form>
-        </td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-</section>
-
-<div id="invoice-detail-modal" class="modal hidden">
-  <div class="modal-card">
-    <div class="modal-header">
-      <h3>发票明细</h3>
-      <button type="button" class="small-btn" id="close-detail-modal">关闭</button>
+  <div class="query-list-head">
+    <div>
+      <p class="section-kicker">Invoice List</p>
+      <h3>发票列表</h3>
+      <p class="query-card-tip">当前共返回 {{ total_count }} 条记录，其中 {{ ns.attachment_count }} 条已归档附件。</p>
     </div>
-    <p id="detail-invoice-meta"></p>
-    <table>
+  </div>
+
+  <div class="workbench-table-shell">
+    <table class="workbench-table">
       <thead>
         <tr>
-          <th>名称</th><th>规格</th><th>税收编码</th><th>数量</th><th>单价</th><th>金额</th><th>税率</th><th>税额</th><th>价税合计</th>
+          <th>类型 / 状态</th>
+          <th>发票信息</th>
+          <th>订单 / 业务员</th>
+          <th>销售方</th>
+          <th>购买方</th>
+          <th>金额</th>
+          <th>附件</th>
+          <th>操作</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for i in invoices %}
+        <tr>
+          <td class="compact-col compact-meta-cell">
+            <strong>{{ i.invoice_type }}</strong>
+            <span class="status-pill {{ 'status-opened' if i.status == '已开' else 'status-pending' }}">{{ i.status }}</span>
+          </td>
+          <td class="compact-col">
+            <div class="cell-stack invoice-info-stack">
+              <strong>{{ i.invoice_number }}</strong>
+              <span>{{ i.invoice_date }}</span>
+              <span class="invoice-item-preview" title="{% for item in i.items %}{{ item.product_name or '未命名商品' }}{% if item.spec_model %}({{ item.spec_model }}){% endif %}{% if not loop.last %} / {% endif %}{% endfor %}">
+                {% if i.items %}
+                  {% for item in i.items[:2] %}
+                    {{ item.product_name or '未命名商品' }}{% if item.spec_model %}({{ item.spec_model }}){% endif %}{% if not loop.last %} / {% endif %}
+                  {% endfor %}
+                  {% if i.items|length > 2 %}
+                    / 共 {{ i.items|length }} 项
+                  {% endif %}
+                {% else %}
+                  无商品明细
+                {% endif %}
+              </span>
+            </div>
+          </td>
+          <td class="compact-col">
+            <div class="cell-stack">
+              <strong>{{ i.order_number or '-' }}</strong>
+              <span>{{ i.order_date or '' }}{% if i.salesperson %} / {{ i.salesperson }}{% endif %}</span>
+            </div>
+          </td>
+          <td class="compact-col cell-ellipsis" title="{{ i.seller.name if i.seller else '' }}">{{ i.seller.name if i.seller else '' }}</td>
+          <td class="compact-col">
+            <div class="cell-stack cell-ellipsis" title="{{ i.buyer.name if i.buyer else '' }}{% if i.buyer and i.buyer.platform %} / {{ i.buyer.platform }}{% endif %}">
+              <strong>{{ i.buyer.name if i.buyer else '' }}</strong>
+              <span>{{ i.buyer.platform if i.buyer else '' }}</span>
+            </div>
+          </td>
+          <td class="compact-col amount-col">
+            <div class="cell-stack amount-stack">
+              <strong>{{ i.amount_with_tax }}</strong>
+              <span>不含税 {{ i.amount_without_tax }} / 税额 {{ i.tax_amount }}</span>
+            </div>
+          </td>
+          <td class="compact-col">
+            <div class="desktop-tool-stack">
+              {% if i.file_stored_path %}
+              <div class="tool-group compact-action-stack">
+                <span class="tool-group-label tool-group-label-invoice">发票</span>
+                <button type="button" class="tool-chip native-file-action" data-endpoint="/api/invoices/{{ i.id }}/open-native">打开</button>
+                <button type="button" class="tool-chip native-file-action" data-endpoint="/api/invoices/{{ i.id }}/reveal-native">定位</button>
+              </div>
+              {% endif %}
+              {% if i.trade_voucher_stored_path %}
+              <div class="tool-group compact-action-stack">
+                <span class="tool-group-label tool-group-label-voucher">凭证</span>
+                <button type="button" class="tool-chip native-file-action" data-endpoint="/api/invoices/{{ i.id }}/trade-voucher/open-native">打开</button>
+                <button type="button" class="tool-chip native-file-action" data-endpoint="/api/invoices/{{ i.id }}/trade-voucher/reveal-native">定位</button>
+              </div>
+              {% endif %}
+              {% if not i.file_stored_path and not i.trade_voucher_stored_path and not i.trade_voucher_text %}
+              <span class="muted-tip">无附件 / 凭证</span>
+              {% elif i.trade_voucher_text %}
+              <span class="tool-inline-note">含粘贴凭证</span>
+              {% endif %}
+            </div>
+          </td>
+          <td class="compact-col">
+            <div class="row-action-toolbar">
+              <div class="tool-group tool-group-primary">
+                <button type="button" class="tool-chip view-items" data-invoice-id="{{ i.id }}">明细</button>
+                <a class="tool-chip-link" href="/invoices/{{ i.id }}/edit">编辑</a>
+              </div>
+              <div class="tool-group">
+                {% if i.status == '已开' %}
+                <form method="post" action="/invoices/{{ i.id }}/status" class="inline-form">
+                  <input type="hidden" name="status" value="待开">
+                  <button type="submit" class="tool-chip">改待开</button>
+                </form>
+                {% else %}
+                <form method="post" action="/invoices/{{ i.id }}/status" class="inline-form">
+                  <input type="hidden" name="status" value="已开">
+                  <button type="submit" class="tool-chip">标已开</button>
+                </form>
+                {% endif %}
+                <form method="post" action="/invoices/{{ i.id }}/delete" class="inline-form" onsubmit="return confirm('确认删除该发票?');">
+                  <button type="submit" class="tool-chip tool-chip-danger">删除</button>
+                </form>
+              </div>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<div id="invoice-detail-modal" class="modal detail-drawer hidden">
+  <div class="modal-card detail-drawer-card invoice-detail-drawer-card">
+    <div class="modal-header detail-drawer-header">
+      <div>
+        <p class="section-kicker">Invoice Detail</p>
+        <h3>发票明细</h3>
+        <p id="detail-position-meta" class="detail-position-meta"></p>
+      </div>
+      <div class="detail-drawer-toolbar">
+        <div class="tool-group tool-group-primary">
+          <button type="button" class="tool-chip" id="detail-prev-btn">上一条</button>
+          <button type="button" class="tool-chip" id="detail-next-btn">下一条</button>
+        </div>
+        <button type="button" class="tool-chip" id="close-detail-modal">关闭</button>
+      </div>
+    </div>
+    <p id="detail-invoice-meta" class="detail-drawer-meta"></p>
+    <p id="detail-voucher-meta" class="detail-drawer-meta detail-voucher-meta"></p>
+    <div class="detail-drawer-table-shell">
+    <table class="detail-drawer-table">
+      <thead>
+        <tr>
+          <th>名称</th><th>规格</th><th>税收编码</th><th>数量</th><th>单价</th><th>未税金额</th><th>税率</th><th>税额</th><th>总金额</th>
         </tr>
       </thead>
       <tbody id="detail-items-body"></tbody>
     </table>
+    </div>
+    <section class="detail-voucher-preview-panel" id="detail-voucher-preview-panel">
+      <div class="detail-voucher-preview-header">
+        <strong>交易凭证预览</strong>
+      </div>
+      <div id="detail-voucher-preview" class="detail-voucher-preview-body">
+        <p class="muted-tip">暂无交易凭证文件</p>
+      </div>
+    </section>
   </div>
 </div>
 {% endblock %}

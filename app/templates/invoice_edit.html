@@ -1,125 +1,251 @@
 {% extends "base.html" %}
-{% block header_title %}编辑发票{% endblock %}
-{% block page_subtitle %}修改发票基础信息、购买方、明细行和电子附件，台账金额会自动重算。{% endblock %}
+{% block header_title %}发票编辑工作台{% endblock %}
+{% block page_subtitle %}按票管工作流修订票面信息、业务单据、附件原件与凭证留痕，保存后自动重算台账。{% endblock %}
 {% block page_actions %}<a class="button-link secondary-link" href="/invoices">返回台账</a>{% endblock %}
 {% block content %}
-<section class="panel">
+<section class="panel invoice-workspace-panel">
   <div class="panel-header">
     <div>
-      <p class="section-kicker">Update Invoice</p>
-      <h3>编辑发票</h3>
+      <p class="section-kicker">Invoice Edit Workspace</p>
+      <h3>修改发票单据</h3>
     </div>
   </div>
-  <form method="post" action="/invoices/{{ invoice.id }}/edit" enctype="multipart/form-data" id="invoice-form">
+  <form method="post" action="/invoices/{{ invoice.id }}/edit" enctype="multipart/form-data" id="invoice-form" data-async-job-endpoint="/api/jobs/invoices/{{ invoice.id }}/update" data-task-label="发票归档与修改保存">
     <script id="product-name-options" type="application/json">{{ product_name_options | tojson }}</script>
     <script id="product-spec-map" type="application/json">{{ product_specs_map | tojson }}</script>
-    <div class="form-grid">
-      <label>销售方
-        <select name="seller_id" required>
-          {% for s in sellers %}
-          <option value="{{ s.id }}" {% if invoice.seller_id == s.id %}selected{% endif %}>{{ s.name }}{% if s.tax_id %} ({{ s.tax_id }}){% endif %}</option>
-          {% endfor %}
-        </select>
-      </label>
-      <label>购买方
-        <select id="buyer-select">
-          <option value="">请选择购买方（下拉）</option>
-          {% for b in buyers %}
-          <option value="{{ b.id }}" data-name="{{ b.name }}" data-platform="{{ b.platform or '' }}" data-contact="{{ b.contact_person or '' }}" {% if invoice.buyer_id == b.id %}selected{% endif %}>{{ b.name }}</option>
-          {% endfor %}
-        </select>
-        <input id="buyer-search" list="buyer-options" placeholder="输入名称/平台/联系人搜索" autocomplete="off" value="{{ invoice.buyer.name if invoice.buyer else '' }}" required>
-        <datalist id="buyer-options"></datalist>
-        <input type="hidden" name="buyer_id" id="buyer-id-input" value="{{ invoice.buyer_id }}" required>
-      </label>
-      <label>购买方平台
-        <input id="buyer-platform" value="{{ invoice.buyer.platform if invoice.buyer else '' }}" placeholder="自动联动" readonly>
-      </label>
-      <label>购买方联系人
-        <input id="buyer-contact" value="{{ invoice.buyer.contact_person if invoice.buyer else '' }}" placeholder="自动联动" readonly>
-      </label>
-      <label>发票类型
-        <select name="invoice_type" required>
-          {% for t in invoice_type_options %}
-          <option value="{{ t }}" {% if invoice.invoice_type == t %}selected{% endif %}>{{ t }}</option>
-          {% endfor %}
-        </select>
-      </label>
-      <label>税率
-        <select name="tax_rate" required>
-          {% for rate in invoice_tax_rate_options %}
-          <option value="{{ rate }}" {% if rate == default_tax_rate %}selected{% endif %}>{{ (rate * 100) | int }}%</option>
-          {% endfor %}
-        </select>
-      </label>
-      <label>发票号码（选填）<input name="invoice_number" class="invoice-number-input" value="{{ invoice.invoice_number or '' }}"></label>
-      <label>开票日期（选填）<input name="invoice_date" type="date" value="{{ invoice.invoice_date or '' }}"></label>
-      <label>订单号码（选填）<input name="order_number" value="{{ invoice.order_number or '' }}"></label>
-      <label>订单日期（选填）<input name="order_date" type="date" value="{{ invoice.order_date or '' }}"></label>
-      <label>状态
-        <select name="status">
-          {% for s in invoice_status_options %}
-          <option value="{{ s }}" {% if invoice.status == s %}selected{% endif %}>{{ s }}</option>
-          {% endfor %}
-        </select>
-      </label>
-      <div class="invoice-file-panel">
-   
-        {% if invoice.file_stored_path %}
-          <a class="invoice-file-link" href="/invoices/{{ invoice.id }}/file" target="_blank">{{ invoice.file_original_name or '打开当前文件' }}</a>
-          <input type="hidden" name="remove_invoice_file" id="remove-invoice-file-input" value="">
-          <div class="invoice-file-actions">
-            <button type="button" class="small-btn danger-soft" id="toggle-remove-file-btn">删除当前文件</button>
-            <span id="remove-file-hint">未删除</span>
+    <div class="invoice-entry-layout">
+      <div class="invoice-entry-main">
+        <section class="invoice-entry-section">
+          <div class="invoice-section-heading">
+            <div>
+              <p class="section-kicker">Counterparty</p>
+              <h4>基础票面信息</h4>
+            </div>
           </div>
-        {% else %}
-          
-        {% endif %}
-        <label class="invoice-file-upload">电子发票文件(PDF/OFD)<input name="invoice_file" id="invoice-file-input" class="invoice-file-input" type="file" accept=".pdf,.ofd"></label>
-      </div>
-    </div>
+          <div class="form-grid invoice-form-grid invoice-form-grid-primary">
+        <label>销方名称
+          <select name="seller_id" id="seller-select" required>
+            {% for s in sellers %}
+            <option value="{{ s.id }}" data-salespeople="{{ s.salespeople|map(attribute='name')|join('||') }}" data-primary-salesperson="{{ s.salespeople[0].name if s.salespeople else '' }}" {% if invoice.seller_id == s.id %}selected{% endif %}>{{ s.name }}{% if s.tax_id %} ({{ s.tax_id }}){% endif %}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <label>经办业务员
+          <input name="salesperson" id="salesperson-input" list="salesperson-options" value="{{ invoice.salesperson or (invoice.seller.salespeople[0].name if invoice.seller and invoice.seller.salespeople else '') }}" placeholder="自动带出，也可输入联想选择">
+          <datalist id="salesperson-options">
+            {% for person in salesperson_options %}
+            <option value="{{ person }}"></option>
+            {% endfor %}
+          </datalist>
+        </label>
+        <label>购方名称
+          <input id="buyer-search" list="buyer-options" placeholder="输入名称 / 平台 / 联系人搜索" autocomplete="off" value="{{ invoice.buyer.name if invoice.buyer else '' }}" required>
+          <datalist id="buyer-options">
+            {% for b in buyers %}
+            <option value="{{ b.name }}" data-id="{{ b.id }}" data-platform="{{ b.platform or '' }}" data-contact="{{ b.contact_person or '' }}" data-phone="{{ b.contact_phone or '' }}"></option>
+            {% endfor %}
+          </datalist>
+          <input type="hidden" name="buyer_id" id="buyer-id-input" value="{{ invoice.buyer_id }}" required>
+        </label>
+        <label>购方平台来源
+          <input id="buyer-platform" value="{{ invoice.buyer.platform if invoice.buyer else '' }}" placeholder="自动联动" readonly>
+        </label>
+        <label>购方联系人
+          <input id="buyer-contact" value="{{ invoice.buyer.contact_person if invoice.buyer else '' }}" placeholder="自动联动" readonly>
+        </label>
+        <label>发票种类
+          <select name="invoice_type" required>
+            {% for t in invoice_type_options %}
+            <option value="{{ t }}" {% if invoice.invoice_type == t %}selected{% endif %}>{{ t }}</option>
+            {% endfor %}
+          </select>
+        </label>
+          </div>
+        </section>
 
-    <div class="panel-header">
-      <div>
-        <p class="section-kicker">Invoice Items</p>
-        <h3>商品明细</h3>
-      </div>
-    </div>
-    <table id="item-table">
-      <thead>
-        <tr>
-          <th>名称</th><th>规格</th><th>单价</th><th>数量</th><th>金额（含税）</th><th></th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for item in invoice.items %}
-        <tr>
-          <td>
-            <input name="item_name" class="item-name-input" list="" autocomplete="off" data-selected="{{ item.product_name }}" required>
-            <datalist class="item-name-list"></datalist>
-          </td>
-          <td>
-            <input name="item_spec" class="item-spec-input" list="" autocomplete="off" data-selected="{{ item.spec_model }}">
-            <datalist class="item-spec-list"></datalist>
-          </td>
-          <td><input name="item_unit_price" type="number" step="0.000001" min="0" value="{{ item.unit_price }}" class="item-unit-price-input" placeholder="选填"></td>
-          <td><input name="item_quantity" type="number" step="1" min="1" value="{{ item.quantity|int }}" class="auto-clear-default item-quantity-input" data-default-value="1" required></td>
-          <td><input name="item_amount_with_tax" type="number" step="0.01" min="0" value="{{ item.total_with_tax }}" class="auto-clear-default item-amount-input" data-default-value="0" required></td>
-          <td><button type="button" class="small-btn remove-row">删除</button></td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-    <p>数量按整数录入。若未填写单价，输入数量与金额后会自动补齐单价。税额会根据你选择的税率（1% / 3% / 13%）自动拆分。</p>
-    <button type="button" id="add-item" class="small-btn">+ 添加明细</button>
+        <section class="invoice-entry-section">
+          <div class="invoice-section-heading">
+            <div>
+              <p class="section-kicker">Business Sheet</p>
+              <h4>业务与开票信息</h4>
+            </div>
+          </div>
+          <div class="form-grid invoice-form-grid">
+        <label>适用税率
+          <select name="tax_rate" required>
+            {% for rate in invoice_tax_rate_options %}
+            <option value="{{ rate }}" {% if rate == default_tax_rate %}selected{% endif %}>{{ (rate * 100) | int }}%</option>
+            {% endfor %}
+          </select>
+        </label>
+        <label>发票号码
+          <input name="invoice_number" class="invoice-number-input" value="{{ invoice.invoice_number or '' }}" placeholder="可由电子发票原件自动识别">
+        </label>
+        <label>开票日期
+          <input name="invoice_date" type="date" value="{{ invoice.invoice_date or '' }}">
+        </label>
+        <label>业务单号
+          <input name="order_number" value="{{ invoice.order_number or '' }}" placeholder="订单号 / 合同号 / 流水号">
+        </label>
+        <label>业务日期
+          <input name="order_date" type="date" value="{{ invoice.order_date or '' }}">
+        </label>
+        <label>开票状态
+          <select name="status">
+            {% for s in invoice_status_options %}
+            <option value="{{ s }}" {% if invoice.status == s %}selected{% endif %}>{{ s }}</option>
+            {% endfor %}
+          </select>
+        </label>
+          </div>
+        </section>
 
-    <label>备注
-      <textarea name="notes" rows="3">{{ invoice.notes }}</textarea>
-    </label>
+        <section class="invoice-entry-section invoice-entry-section-lines">
+          <div class="panel-header invoice-items-header">
+            <div>
+              <p class="section-kicker">Invoice Items</p>
+              <h3>发票项目明细</h3>
+            </div>
+          </div>
+          <table id="item-table">
+            <thead>
+              <tr>
+                <th>商品或服务名称</th><th>规格型号</th><th>含税单价</th><th>数量</th><th>价税合计</th><th>操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for item in invoice.items %}
+              <tr>
+                <td>
+                  <input name="item_name" class="item-name-input" list="" autocomplete="off" data-selected="{{ item.product_name }}" required>
+                  <datalist class="item-name-list"></datalist>
+                </td>
+                <td>
+                  <input name="item_spec" class="item-spec-input" list="" autocomplete="off" data-selected="{{ item.spec_model }}">
+                  <datalist class="item-spec-list"></datalist>
+                </td>
+                <td><input name="item_unit_price" type="number" step="0.000001" min="0" value="{{ item.unit_price }}" class="item-unit-price-input" placeholder="选填"></td>
+                <td><input name="item_quantity" type="number" step="1" min="1" value="{{ item.quantity|int }}" class="auto-clear-default item-quantity-input" data-default-value="1" required></td>
+                <td><div class="line-amount-editor"><input name="item_amount_with_tax" type="number" step="0.01" min="0" value="{{ item.total_with_tax }}" class="auto-clear-default item-amount-input" data-default-value="0" required><span class="line-amount-meta">未税 0.00 / 税额 0.00</span></div></td>
+                <td><button type="button" class="small-btn remove-row">删除</button></td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+          <p class="invoice-section-note">数量按整数录入。若未填写单价，输入数量与价税合计后会自动补齐单价，税额会根据当前税率自动拆分。</p>
+          <div class="invoice-lines-footer">
+            <button type="button" id="add-item" class="small-btn">+ 添加明细</button>
+            <div class="invoice-totals-strip" aria-label="明细合计">
+              <div class="invoice-total-card">
+                <span>明细行数</span>
+                <strong id="invoice-total-lines">{{ invoice.items|length }}</strong>
+              </div>
+              <div class="invoice-total-card">
+                <span>未税合计</span>
+                <strong id="invoice-total-amount">0.00</strong>
+              </div>
+              <div class="invoice-total-card">
+                <span>税额合计</span>
+                <strong id="invoice-total-tax">0.00</strong>
+              </div>
+              <div class="invoice-total-card accent">
+                <span>价税合计</span>
+                <strong id="invoice-total-with-tax">0.00</strong>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="invoice-entry-section invoice-entry-section-notes">
+          <div class="invoice-section-heading">
+            <div>
+              <p class="section-kicker">Remarks</p>
+              <h4>备注与备查说明</h4>
+            </div>
+          </div>
+          <div class="form-grid invoice-notes-grid">
+            <label>备注说明
+              <textarea name="notes" rows="3">{{ invoice.notes }}</textarea>
+            </label>
+
+            <label>凭证摘要 / 备查内容
+              <textarea name="trade_voucher_text" rows="4" placeholder="支持直接粘贴订单截图文字、转账凭证摘要、聊天记录编号、付款流水说明等内容">{{ invoice.trade_voucher_text or '' }}</textarea>
+            </label>
+          </div>
+        </section>
+      </div>
+
+      <aside class="invoice-entry-side">
+        <section class="invoice-summary-strip" aria-label="当前录入摘要">
+          <div class="invoice-summary-card">
+            <span>当前销方</span>
+            <strong id="summary-seller-name">{{ invoice.seller.name if invoice.seller else '未选择' }}</strong>
+          </div>
+          <div class="invoice-summary-card">
+            <span>当前购方</span>
+            <strong id="summary-buyer-name">{{ invoice.buyer.name if invoice.buyer else '未选择' }}</strong>
+          </div>
+          <div class="invoice-summary-card">
+            <span>当前税率</span>
+            <strong id="summary-tax-rate">{{ (default_tax_rate * 100) | int }}%</strong>
+          </div>
+          <div class="invoice-summary-card">
+            <span>当前状态</span>
+            <strong id="summary-invoice-status">{{ invoice.status }}</strong>
+          </div>
+        </section>
+
+        <section class="invoice-entry-section invoice-entry-section-files invoice-entry-section-side">
+          <div class="invoice-section-heading">
+            <div>
+              <p class="section-kicker">Attachments</p>
+              <h4>附件归档与凭证留痕</h4>
+            </div>
+          </div>
+          <div class="invoice-file-grid">
+            <div class="invoice-file-panel invoice-file-panel-primary">
+              {% if invoice.file_stored_path %}
+                <p class="invoice-file-link">{{ invoice.file_original_name or '已归档电子发票原件' }}</p>
+                <div class="invoice-file-native-actions">
+                  <button type="button" class="small-btn native-file-action" data-endpoint="/api/invoices/{{ invoice.id }}/open-native">打开</button>
+                  <button type="button" class="small-btn native-file-action" data-endpoint="/api/invoices/{{ invoice.id }}/reveal-native">定位</button>
+                </div>
+                <input type="hidden" name="remove_invoice_file" id="remove-invoice-file-input" value="">
+                <div class="invoice-file-actions">
+                  <button type="button" class="small-btn danger-soft" id="toggle-remove-file-btn">删除当前文件</button>
+                  <span id="remove-file-hint">未删除</span>
+                </div>
+              {% endif %}
+              <label class="invoice-file-upload">电子发票原件(PDF/OFD/图片)<input name="invoice_file" id="invoice-file-input" class="invoice-file-input" data-invoice-number-source="1" type="file" accept=".pdf,.ofd,.jpg,.jpeg,.jpge,.png,.webp,.gif,.bmp"></label>
+              <button type="button" class="invoice-file-drop-zone" data-target-input="invoice-file-input">
+                <strong>拖拽电子发票原件到这里替换或补传</strong>
+                <span>支持 PDF、OFD、JPG、PNG、WEBP 等图片。只有拖入该区域时，系统才会尝试自动识别发票号码。</span>
+              </button>
+            </div>
+            <div class="invoice-file-panel voucher-panel">
+              {% if invoice.trade_voucher_stored_path %}
+                <p class="invoice-file-link">{{ invoice.trade_voucher_original_name or '已归档交易凭证' }}</p>
+                <div class="invoice-file-native-actions">
+                  <button type="button" class="small-btn native-file-action" data-endpoint="/api/invoices/{{ invoice.id }}/trade-voucher/open-native">打开</button>
+                  <button type="button" class="small-btn native-file-action" data-endpoint="/api/invoices/{{ invoice.id }}/trade-voucher/reveal-native">定位</button>
+                </div>
+              {% endif %}
+              <label class="invoice-file-upload">交易凭证附件<input name="trade_voucher_file" id="trade-voucher-input" class="invoice-file-input" type="file" accept=".pdf,.ofd,.jpg,.jpeg,.jpge,.png,.webp,.gif,.bmp,.txt"></label>
+              <button type="button" class="invoice-file-drop-zone" data-target-input="trade-voucher-input">
+                <strong>拖拽交易凭证到这里替换或补传</strong>
+                <span>支持 PDF、OFD、图片或文本文件。该区域只做凭证归档，不会自动识别发票号码。</span>
+              </button>
+            </div>
+          </div>
+        </section>
+      </aside>
+    </div>
 
     <p class="muted-tip">隐私说明：本系统为本地离线模式，发票数据、客户信息、附件归档和导出文件默认保存在你的电脑本地，不会自动上传到第三方服务器。</p>
 
-    <button type="submit">保存发票修改</button>
+    <div class="invoice-submit-bar">
+      <button type="submit">保存发票修改</button>
+    </div>
   </form>
 </section>
 {% endblock %}

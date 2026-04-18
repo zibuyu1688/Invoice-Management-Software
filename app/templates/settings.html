@@ -2,118 +2,191 @@
 {% block header_title %}系统设置{% endblock %}
 {% block page_subtitle %}自定义数据、附件归档和导出目录，支持按需手动调整。{% endblock %}
 {% block content %}
-<section class="panel">
-  <div class="panel-header">
-    <div>
-      <p class="section-kicker">Storage Setting</p>
-      <h3>数据存储位置</h3>
+<div class="settings-page" data-toast-saved="{{ saved }}" data-toast-storage-paths-saved="{{ storage_paths_saved }}" data-toast-paths-saved="{{ paths_saved }}" data-toast-api-saved="{{ api_key_saved }}" data-toast-backup-saved="{{ backup_saved }}">
+  <section class="panel settings-panel settings-panel-flat">
+    <div class="settings-card-head">
+      <h3>存储与路径设置</h3>
+      <p>调整系统主目录后，data、files、exports 将跟随新的根目录运行。</p>
     </div>
-  </div>
 
+    <form method="post" action="/settings/storage-paths" class="settings-flat-form" data-settings-form>
+      <div class="settings-form-item">
+        <label class="settings-block-label" for="storage-current-display">当前数据目录</label>
+        <div class="settings-path-display settings-path-display-inline">
+          <span class="settings-path-text" id="storage-current-display" title="{{ current_app_home }}">{{ current_app_home }}</span>
+          <button type="button" class="settings-link-btn native-file-action" data-endpoint="/api/settings/open-app-home">
+            <span class="settings-link-icon">▣</span>
+            <span>打开目录</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="settings-form-item">
+        <label class="settings-block-label" for="storage-path-input">新数据目录</label>
+        <div class="settings-input-group">
+          <input id="storage-path-input" name="storage_path" class="settings-group-input" value="{{ current_app_home }}" data-initial-value="{{ current_app_home }}" placeholder="例如：/Users/yourname/Documents/invoice-data" required>
+          <button type="button" id="pick-storage-folder-btn" class="settings-group-button pick-folder-btn" data-target-input="storage-path-input" data-message-id="storage-picker-message">更改路径</button>
+        </div>
+        <p id="storage-picker-message" class="settings-inline-feedback"></p>
+        <div class="settings-alert-warning is-hidden" id="storage-change-alert">
+          <div class="settings-alert-icon">!</div>
+          <div>
+            <p><strong>注意：</strong>检测到路径变更。勾选“迁移数据”将把旧数据移动到新位置，否则旧数据将不可见。</p>
+            <label class="settings-checkbox-row settings-checkbox-row-inline">
+              <input type="checkbox" name="migrate_existing_data" value="1" id="migrate-existing-data-checkbox">
+              <span>迁移现有数据到新目录</span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <hr class="settings-divider">
+
+      <button type="button" class="settings-collapse-header" id="settings-path-collapse-toggle" aria-expanded="true" aria-controls="settings-path-collapse-content">
+        <span>附件归档与导出目录</span>
+        <span class="settings-collapse-icon" aria-hidden="true">›</span>
+      </button>
+
+      <div class="settings-collapse-content" id="settings-path-collapse-content">
+        <div class="settings-form-item">
+          <label class="settings-block-label" for="files-dir-input">附件归档目录</label>
+          <div class="settings-input-group">
+            <input id="files-dir-input" name="files_dir" class="settings-group-input" value="{{ current_files_dir }}" data-initial-value="{{ current_files_dir }}" placeholder="例如：/Users/yourname/Documents/invoice-files">
+            <button type="button" class="settings-group-button pick-folder-btn" data-target-input="files-dir-input" data-message-id="paths-picker-message">更改路径</button>
+          </div>
+          <button type="button" class="settings-text-link native-file-action" data-endpoint="/api/settings/open-files-dir">
+            <span class="settings-link-icon">▣</span>
+            <span>打开当前附件目录</span>
+          </button>
+        </div>
+
+        <div class="settings-form-item">
+          <label class="settings-block-label" for="exports-dir-input">导出目录</label>
+          <div class="settings-input-group">
+            <input id="exports-dir-input" name="exports_dir" class="settings-group-input" value="{{ current_exports_dir }}" data-initial-value="{{ current_exports_dir }}" placeholder="例如：/Users/yourname/Documents/invoice-exports">
+            <button type="button" class="settings-group-button pick-folder-btn" data-target-input="exports-dir-input" data-message-id="paths-picker-message">更改路径</button>
+          </div>
+          <button type="button" class="settings-text-link native-file-action" data-endpoint="/api/settings/open-exports-dir">
+            <span class="settings-link-icon">▣</span>
+            <span>打开当前导出目录</span>
+          </button>
+        </div>
+
+        <p id="paths-picker-message" class="settings-inline-feedback"></p>
+      </div>
+
+      <div class="settings-card-footer">
+        <button type="submit" class="settings-save-btn" disabled>保存设置</button>
+      </div>
+    </form>
+
+    <div class="settings-warning-box">
+      <div class="settings-warning-icon">!</div>
+      <p>路径修改仅在应用重启后正式生效。为避免运行中数据库连接中断，请保存后重启系统。</p>
+    </div>
+  </section>
+
+  <section class="panel settings-panel settings-panel-flat">
+    <div class="settings-card-head">
+      <h3>系统运行与AI配置</h3>
+      <p>查看当前 SQLite 运行状态、备份位置，并管理 DeepSeek API Key。</p>
+    </div>
+
+    <div class="settings-runtime-block">
+      <h4 class="settings-section-title">SQLite 运行状态</h4>
+      <div class="settings-status-list settings-status-list-compact">
+        <div class="settings-status-item">
+          <span class="settings-status-label">Journal Mode</span>
+          <span class="settings-tag">{{ database_status.journal_mode }}</span>
+        </div>
+        <div class="settings-status-item">
+          <span class="settings-status-label">Busy Timeout</span>
+          <span class="settings-tag">{{ database_status.busy_timeout_ms }} ms</span>
+        </div>
+        <div class="settings-status-item">
+          <span class="settings-status-label">完整性检查</span>
+          <span class="settings-tag {% if database_status.integrity_ok %}settings-tag-success{% else %}settings-tag-danger{% endif %}">{% if database_status.integrity_ok %}✓ 通过{% else %}! 失败{% endif %}</span>
+        </div>
+      </div>
+
+      <div class="settings-meta-list settings-meta-list-flat">
+        <div class="settings-meta-item">
+          <div>
+            <span class="settings-meta-label">数据库路径</span>
+            <p>{{ database_status.db_path }}</p>
+          </div>
+          <button type="button" class="settings-copy-btn" data-copy-text="{{ database_status.db_path }}" aria-label="复制数据库路径">⧉</button>
+        </div>
+        <div class="settings-meta-item">
+          <div>
+            <span class="settings-meta-label">备份目录</span>
+            <p>{{ current_backups_dir }}</p>
+          </div>
+          <button type="button" class="settings-copy-btn" data-copy-text="{{ current_backups_dir }}" aria-label="复制备份目录">⧉</button>
+        </div>
+        <div class="settings-meta-item settings-meta-item-detail">
+          <div>
+            <span class="settings-meta-label">完整性结果</span>
+            <p>{{ database_status.integrity_detail }}</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="settings-runtime-actions settings-runtime-actions-flat">
+        <form method="post" action="/settings/database/backup">
+          <button type="submit" class="settings-secondary-outline-btn">立即创建数据库备份</button>
+        </form>
+        <button type="button" class="settings-text-link native-file-action" data-endpoint="/api/settings/open-backups-dir">
+          <span class="settings-link-icon">↗</span>
+          <span>打开备份目录</span>
+        </button>
+      </div>
+    </div>
+
+    <hr class="settings-divider">
+
+    <form method="post" action="/settings/deepseek-api-key" class="settings-flat-form settings-ai-form" data-settings-form>
+      <div class="settings-runtime-block">
+        <h4 class="settings-section-title">DeepSeek API Key</h4>
+        <div class="settings-form-item">
+          <label class="settings-block-label" for="deepseek-status-display">当前状态</label>
+          <div class="settings-path-display">
+            <span class="settings-path-text" id="deepseek-status-display">{% if has_deepseek_api_key == '1' %}已设置（{{ masked_deepseek_api_key }}）{% else %}未设置{% endif %}</span>
+          </div>
+        </div>
+
+        <div class="settings-form-item">
+          <label class="settings-block-label" for="deepseek-api-key-input">API Key</label>
+          <div class="settings-secret-row settings-secret-row-flat">
+            <div class="settings-secret-input-wrap">
+              <input id="deepseek-api-key-input" type="password" name="deepseek_api_key" class="settings-group-input settings-secret-input" value="" data-initial-value="" placeholder="请输入 sk-...">
+              <button type="button" class="settings-icon-btn" id="toggle-api-key-visibility" aria-label="显示或隐藏 API Key">◉</button>
+            </div>
+            <button type="submit" class="settings-save-btn" disabled>保存 API Key</button>
+          </div>
+          <p class="settings-help-text">留空保存将清除当前已保存的 Key。该 Key 仅保存在本机配置文件中，用于购买方管理页的 AI 智能解析填充。</p>
+          <a class="settings-text-link" href="https://platform.deepseek.com/sign_in" target="_blank" rel="noopener noreferrer">
+            <span class="settings-link-icon">↗</span>
+            <span>前往 DeepSeek 平台购买或登录 API</span>
+          </a>
+        </div>
+      </div>
+    </form>
+  </section>
+
+  <p class="page-bottom-note">隐私政策：本系统为本地离线模式，数据、附件归档和导出内容默认仅保存在你的电脑本地，不会自动上传到第三方服务器。</p>
+
+  {% if storage_paths_saved == '1' %}
+  <div class="settings-sr-only">存储与路径设置已保存。新目录：{{ target_home }}；附件目录：{{ target_files_dir }}；导出目录：{{ target_exports_dir }}</div>
+  {% endif %}
   {% if saved == '1' %}
-  <p><strong>保存成功。</strong>新目录：{{ target_home }}。请重启应用后生效。</p>
+  <div class="settings-sr-only">已保存的新目录：{{ target_home }}</div>
   {% endif %}
-
-  <form method="post" action="/settings/storage" class="form-grid">
-    <label>当前目录
-      <input value="{{ current_app_home }}" readonly>
-    </label>
-
-    <label>新目录
-      <input id="storage-path-input" name="storage_path" placeholder="例如：/Users/yourname/Documents/invoice-data" required>
-    </label>
-
-    <label>选择文件夹
-      <button type="button" id="pick-storage-folder-btn" class="small-btn pick-folder-btn" data-target-input="storage-path-input" data-message-id="storage-picker-message">点击选择文件夹</button>
-    </label>
-
-    <label class="checkbox-row">
-      <input type="checkbox" name="migrate_existing_data" value="1">
-      <span>迁移现有 data/files/exports 到新目录</span>
-    </label>
-
-    <button type="submit">保存设置</button>
-  </form>
-
-  <p id="storage-picker-message" class="muted-tip"></p>
-
-  <p>说明：为了避免运行中数据库连接中断，修改目录后需要重启系统，新的路径才会被正式使用。</p>
-</section>
-
-<section class="panel">
-  <div class="panel-header">
-    <div>
-      <p class="section-kicker">Path Override</p>
-      <h3>附件归档与导出目录</h3>
-    </div>
-  </div>
-
   {% if paths_saved == '1' %}
-  <p><strong>保存成功。</strong>附件目录：{{ target_files_dir }}；导出目录：{{ target_exports_dir }}。请重启应用后生效。</p>
+  <div class="settings-sr-only">已保存的附件目录：{{ target_files_dir }}；导出目录：{{ target_exports_dir }}</div>
   {% endif %}
-
-  <form method="post" action="/settings/path-overrides" class="form-grid">
-    <label>当前附件归档目录
-      <input value="{{ current_files_dir }}" readonly>
-    </label>
-
-    <label>附件归档目录（手动修改）
-      <input id="files-dir-input" name="files_dir" placeholder="例如：/Users/yourname/Documents/invoice-files">
-    </label>
-
-    <label>选择附件目录
-      <button type="button" class="small-btn pick-folder-btn" data-target-input="files-dir-input" data-message-id="paths-picker-message">点击选择文件夹</button>
-    </label>
-
-    <label>当前导出目录
-      <input value="{{ current_exports_dir }}" readonly>
-    </label>
-
-    <label>导出目录（手动修改）
-      <input id="exports-dir-input" name="exports_dir" placeholder="例如：/Users/yourname/Documents/invoice-exports">
-    </label>
-
-    <label>选择导出目录
-      <button type="button" class="small-btn pick-folder-btn" data-target-input="exports-dir-input" data-message-id="paths-picker-message">点击选择文件夹</button>
-    </label>
-
-    <button type="submit">保存附件/导出目录</button>
-  </form>
-
-  <p id="paths-picker-message" class="muted-tip"></p>
-  <p>说明：留空并保存可恢复默认目录（跟随数据存储目录下的 files/exports）。</p>
-</section>
-
-<section class="panel">
-  <div class="panel-header">
-    <div>
-      <p class="section-kicker">AI Setting</p>
-      <h3>DeepSeek API Key</h3>
-    </div>
-  </div>
-
-  {% if api_key_saved == '1' %}
-  <p><strong>保存成功。</strong>DeepSeek API Key 已更新。</p>
+  {% if backup_saved == '1' %}
+  <div class="settings-sr-only">备份成功：{{ backup_file }}</div>
   {% endif %}
-
-  <form method="post" action="/settings/deepseek-api-key" class="form-grid">
-    <label>当前状态
-      <input value="{% if has_deepseek_api_key == '1' %}已设置（{{ masked_deepseek_api_key }}）{% else %}未设置{% endif %}" readonly>
-    </label>
-
-    <label>DeepSeek API Key
-      <input type="password" name="deepseek_api_key" placeholder="请输入 sk-...，留空可清除">
-    </label>
-
-    <button type="submit">保存 API Key</button>
-  </form>
-
-  <p>
-    <a class="button-link secondary-link" href="https://platform.deepseek.com/sign_in" target="_blank" rel="noopener noreferrer">前往 DeepSeek 平台购买/登录 API</a>
-  </p>
-
-  <p>说明：该 Key 仅保存在本机 bootstrap 配置文件中，用于“购买方管理”页的 AI 智能解析填充。</p>
-</section>
-
-<p class="page-bottom-note">隐私政策：本系统为本地离线模式，数据、附件归档和导出内容默认仅保存在你的电脑本地，不会自动上传到第三方服务器。</p>
+</div>
 {% endblock %}

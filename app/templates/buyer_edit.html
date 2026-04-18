@@ -1,6 +1,9 @@
 {% extends "base.html" %}
 {% block header_title %}编辑购买方{% endblock %}
 {% block page_subtitle %}维护账户、税务、银行与联系人信息，提升开票和回款协作效率。{% endblock %}
+{% block page_actions %}
+<a class="button-link secondary-link" href="/buyers" aria-label="关闭编辑页">✕</a>
+{% endblock %}
 {% block content %}
 <section class="panel">
   <div class="panel-header">
@@ -8,6 +11,7 @@
       <p class="section-kicker">Update Buyer</p>
       <h3>编辑购买方</h3>
     </div>
+    <a class="button-link secondary-link" href="/buyers" aria-label="关闭编辑页">✕</a>
   </div>
   <form method="post" action="/buyers/{{ buyer.id }}/edit" class="form-grid">
     <input name="name" value="{{ buyer.name }}" placeholder="账户名称" required>
@@ -17,7 +21,7 @@
     <input name="bank_account_no" value="{{ buyer.bank_account_no or '' }}" placeholder="银行账号（选填）">
     <input name="contact_person" value="{{ buyer.contact_person or '' }}" placeholder="联系人（选填）">
     <input name="contact_phone" value="{{ buyer.contact_phone or '' }}" placeholder="联系人手机（选填）">
-    <input name="wechat_qq" value="{{ buyer.wechat_qq or '' }}" placeholder="微信/QQ（选填）">
+    <input name="wechat_qq" value="{{ buyer.wechat_qq or '' }}" placeholder="微信/QQ/阿里旺旺（选填）">
     <input name="shipping_address" value="{{ buyer.shipping_address or '' }}" placeholder="收货地址（选填）">
     <input name="notes" value="{{ buyer.notes or '' }}" placeholder="备注（选填）">
     <label>平台

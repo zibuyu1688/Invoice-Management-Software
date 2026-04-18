@@ -11,11 +11,32 @@ class Seller(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(200), nullable=False, unique=True)
     tax_id = Column(String(64), nullable=True)
+    salesperson = Column(String(64), nullable=True)
     address_phone = Column(String(255), nullable=True)
     bank_account = Column(String(255), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     invoices = relationship("Invoice", back_populates="seller")
+    salespeople = relationship(
+        "SellerSalesperson",
+        back_populates="seller",
+        cascade="all, delete-orphan",
+        order_by="SellerSalesperson.id.asc()",
+    )
+
+
+class SellerSalesperson(Base):
+    __tablename__ = "seller_salespeople"
+
+    id = Column(Integer, primary_key=True, index=True)
+    seller_id = Column(Integer, ForeignKey("sellers.id"), nullable=False, index=True)
+    name = Column(String(64), nullable=False)
+    phone = Column(String(64), nullable=True)
+    wechat = Column(String(128), nullable=True)
+    department = Column(String(64), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    seller = relationship("Seller", back_populates="salespeople")
 
 
 class Buyer(Base):
@@ -65,6 +86,7 @@ class Invoice(Base):
 
     seller_id = Column(Integer, ForeignKey("sellers.id"), nullable=False)
     buyer_id = Column(Integer, ForeignKey("buyers.id"), nullable=False)
+    salesperson = Column(String(64), nullable=True)
 
     amount_without_tax = Column(Float, nullable=False)
     tax_amount = Column(Float, nullable=False)
@@ -75,6 +97,9 @@ class Invoice(Base):
 
     file_original_name = Column(String(255), nullable=True)
     file_stored_path = Column(String(500), nullable=True)
+    trade_voucher_original_name = Column(String(255), nullable=True)
+    trade_voucher_stored_path = Column(String(500), nullable=True)
+    trade_voucher_text = Column(Text, nullable=True)
 
     created_at = Column(DateTime, default=datetime.utcnow)
 

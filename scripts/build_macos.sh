@@ -18,6 +18,7 @@ pyinstaller --noconfirm --clean --windowed --name 蜀丞票管 \
   --icon assets/icons/shucheng.icns \
   --add-data "app/templates:app/templates" \
   --add-data "app/static:app/static" \
+  --collect-submodules webview \
   launcher.py
 
 # Fail the build if runtime data files were accidentally bundled.
